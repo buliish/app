@@ -1,0 +1,15 @@
+# 微信开发者工具生成的文件
+.sitemap.json
+project.config.json.bak
+miniprogram_npm/
+node_modules/
+# Git 无关文件
+.DS_Store
+*.log
+# 本地配置（如密钥、测试数据）
+config/local.js
+# 编辑器缓存
+.vscode/
+.idea/
+# Windows 系统文件
+Thumbs.db
