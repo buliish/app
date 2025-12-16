@@ -1,27 +1,36 @@
 <!--index.wxml-->
-<scroll-view class="scrollarea" scroll-y type="list">
-  <view class="container">
-    <view class="userinfo">
-      <block wx:if="{{canIUseNicknameComp && !hasUserInfo}}">
-        <button class="avatar-wrapper" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
-          <image class="avatar" src="{{userInfo.avatarUrl}}"></image>
-        </button>
-        <view class="nickname-wrapper">
-          <text class="nickname-label">昵称</text>
-          <input type="nickname" class="nickname-input" placeholder="请输入昵称" bind:change="onInputChange" />
+<view class="page">
+  <scroll-view class="chat-area" scroll-y scroll-with-animation scroll-into-view="{{scrollToView}}">
+    <view class="messages">
+      <block wx:for="{{messages}}" wx:key="id">
+        <view id="msg-{{item.id}}" class="message-row {{item.sender}}">
+          <view class="bubble {{item.sender}}">
+            <text>{{item.text}}</text>
+          </view>
+        </view>
+        <view wx:if="{{item.sender === 'bot' && item.suggestions && item.suggestions.length}}" class="suggestion-row">
+          <block wx:for="{{item.suggestions}}" wx:key="*this">
+            <button class="suggestion-btn" data-question="{{item}}" bindtap="onSuggestionTap">{{item}}</button>
+          </block>
         </view>
       </block>
-      <block wx:elif="{{!hasUserInfo}}">
-        <button wx:if="{{canIUseGetUserProfile}}" bindtap="getUserProfile"> 获取头像昵称 </button>
-        <view wx:else> 请使用2.10.4及以上版本基础库 </view>
-      </block>
-      <block wx:else>
-        <image bindtap="bindViewTap" class="userinfo-avatar" src="{{userInfo.avatarUrl}}" mode="cover"></image>
-        <text class="userinfo-nickname">{{userInfo.nickName}}</text>
-      </block>
     </view>
-    <view class="usermotto">
-      <text class="user-motto">{{motto}}</text>
+  </scroll-view>
+
+  <view class="composer">
+    <view class="input-wrapper">
+      <input
+        class="chat-input"
+        placeholder="请输入消息..."
+        cursor-spacing="20"
+        confirm-type="send"
+        bindconfirm="onSend"
+        bindinput="onInputChange"
+        value="{{inputValue}}"
+      />
+      <button class="send-btn" hover-class="none" bindtap="onSend">
+        <image class="send-icon" src="{{sendIcon}}" mode="aspectFit"></image>
+      </button>
     </view>
   </view>
-</scroll-view>
+</view>

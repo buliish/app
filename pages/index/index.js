@@ -1,49 +1,74 @@
 // index.js
-const defaultAvatarUrl = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
-
 Page({
   data: {
-    motto: 'Hello World',
-    userInfo: {
-      avatarUrl: defaultAvatarUrl,
-      nickName: '',
-    },
-    hasUserInfo: false,
-    canIUseGetUserProfile: wx.canIUse('getUserProfile'),
-    canIUseNicknameComp: wx.canIUse('input.type.nickname'),
+    inputValue: '',
+    sendIcon:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="%23fff" d="M5.1 6.37 41.4 21.5a2 2 0 0 1 0 3.72L5.1 40.37a1.5 1.5 0 0 1-2.04-1.83l4.14-14.4-4.14-14.7A1.5 1.5 0 0 1 5.1 6.37zM10.7 24l-2.77 9.6L34.4 24 7.93 14.07 10.7 24z"/></svg>',
+    messages: [
+      {
+        id: 'm-hello',
+        sender: 'bot',
+        text: '你好，请输入任何文本，我都会将它翻译成地道的英文。',
+        suggestions: [],
+      },
+    ],
+    scrollToView: 'msg-m-hello',
   },
-  bindViewTap() {
-    wx.navigateTo({
-      url: '../logs/logs'
-    })
-  },
-  onChooseAvatar(e) {
-    const { avatarUrl } = e.detail
-    const { nickName } = this.data.userInfo
-    this.setData({
-      "userInfo.avatarUrl": avatarUrl,
-      hasUserInfo: nickName && avatarUrl && avatarUrl !== defaultAvatarUrl,
-    })
-  },
+
   onInputChange(e) {
-    const nickName = e.detail.value
-    const { avatarUrl } = this.data.userInfo
+    this.setData({ inputValue: e.detail.value });
+  },
+
+  onSend() {
+    const text = (this.data.inputValue || '').trim();
+    if (!text) return;
+
+    const userMsg = this.createMessage('user', text);
+    const botMsg = this.createBotReply(text);
+
+    const nextMessages = [...this.data.messages, userMsg, botMsg];
     this.setData({
-      "userInfo.nickName": nickName,
-      hasUserInfo: nickName && avatarUrl && avatarUrl !== defaultAvatarUrl,
-    })
+      messages: nextMessages,
+      inputValue: '',
+      scrollToView: `msg-${botMsg.id}`,
+    });
   },
-  getUserProfile(e) {
-    // 推荐使用wx.getUserProfile获取用户信息，开发者每次通过该接口获取用户个人信息均需用户确认，开发者妥善保管用户快速填写的头像昵称，避免重复弹窗
-    wx.getUserProfile({
-      desc: '展示用户信息', // 声明获取用户个人信息后的用途，后续会展示在弹窗中，请谨慎填写
-      success: (res) => {
-        console.log(res)
-        this.setData({
-          userInfo: res.userInfo,
-          hasUserInfo: true
-        })
-      }
-    })
+
+  onSuggestionTap(e) {
+    const question = e.currentTarget.dataset.question;
+    this.setData({ inputValue: question }, () => this.onSend());
   },
-})
+
+  createMessage(sender, text, suggestions = []) {
+    return {
+      id: `${sender}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      sender,
+      text,
+      suggestions,
+    };
+  },
+
+  createBotReply(originalText) {
+    const translated = this.mockTranslate(originalText);
+    const followups = [
+      '告诉我一些关于日期的小知识',
+      '介绍一下闰年的判断规则',
+      '今年的农历新年是几月几号',
+    ];
+
+    return this.createMessage('bot', translated, followups);
+  },
+
+  mockTranslate(text) {
+    if (!text) return 'Here is your translation.';
+    return `“${text}” 的英文可以这样说：${this.simpleTranslate(text)}`;
+  },
+
+  simpleTranslate(text) {
+    // 演示用的占位逻辑，后续可接入真实 AI Agent
+    if (/星期|周|礼拜/.test(text)) {
+      return 'What day is it today?';
+    }
+    return `English: ${text}`;
+  },
+});

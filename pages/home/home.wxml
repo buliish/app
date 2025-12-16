@@ -1,0 +1,36 @@
+<!--菜单-->
+<view class="menu">
+
+  <!--搜索功能-->
+  <view class="search-box">
+    <view class="search-ipt-box">
+      <view class="search-icon">
+        <image class="auto-img" src="../../images/home.png" mode="widthFix"/>
+      </view>
+      <input calss="search-ipt" type="text" placeholder="请输入商品名称"/>
+    </view>
+  </view>
+
+  <!--商品类型和列表-->
+  <view class="menu-content">
+
+    <!--商品类型-->
+    <view class="type">
+      <view class="type-item active">
+        咖啡
+        <view class="line"></view>
+      </view>
+      <view class="type-item">
+        咖啡
+        <view class="line"></view>
+      </view>
+      <view class="type-item">
+        咖啡
+        <view class="line"></view>
+      </view>
+    </view>
+
+    <!--商品列表-->
+    <view class="list">2</view>
+  </view>
+</view>
