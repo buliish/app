@@ -1,6 +1,8 @@
 {
   "pages": [
+    "pages/menu/menu",
     "pages/home/home",
+    "pages/shopbag/shopbag",
     "pages/index/index",
     "pages/logs/logs",
     "pages/my/my"
@@ -25,10 +27,16 @@
         "selectedIconPath": "./images/home_active.png"
       },
       {
-        "pagePath": "pages/index/index",
-        "text": "ai助手",
+        "pagePath": "pages/menu/menu",
+        "text": "菜单",
         "iconPath": "./images/menu.png",
         "selectedIconPath": "./images/menu_active.png"
+      },
+      {
+        "pagePath": "pages/index/index",
+        "text": "购物袋",
+        "iconPath": "./images/shopbag.png",
+        "selectedIconPath": "./images/shopbag_active.png"
       },
       {
         "pagePath": "pages/my/my",

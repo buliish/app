@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "Product": "../../components/Product/Product"
+  },
+  "navigationBarTitleText": "菜单"
+}

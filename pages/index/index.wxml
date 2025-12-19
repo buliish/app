@@ -5,20 +5,44 @@
       <block wx:for="{{messages}}" wx:key="id">
         <view id="msg-{{item.id}}" class="message-row {{item.sender}}">
           <view class="bubble {{item.sender}}">
-            <text>{{item.text}}</text>
+            <text wx:if="{{item.text}}">{{item.text}}</text>
+            <view wx:if="{{item.images && item.images.length}}" class="bubble-images">
+              <block wx:for="{{item.images}}" wx:key="*this">
+                <image class="bubble-image" src="{{item}}" mode="aspectFill" />
+              </block>
+            </view>
           </view>
         </view>
-        <view wx:if="{{item.sender === 'bot' && item.suggestions && item.suggestions.length}}" class="suggestion-row">
-          <block wx:for="{{item.suggestions}}" wx:key="*this">
-            <button class="suggestion-btn" data-question="{{item}}" bindtap="onSuggestionTap">{{item}}</button>
-          </block>
+        <view wx:if="{{item.sender === 'bot' && item.suggestions && item.suggestions.length}}" class="suggestion-wrapper">
+          <view class="suggestion-label">你可能还想问：</view>
+          <view class="suggestion-row">
+            <block wx:for="{{item.suggestions}}" wx:key="*this">
+              <view class="suggestion-item">
+                <button class="suggestion-btn" data-question="{{item.value}}" bindtap="onSuggestionTap">
+                  {{item.label}}
+                </button>
+              </view>
+            </block>
+          </view>
         </view>
       </block>
     </view>
   </scroll-view>
 
   <view class="composer">
+    <!-- 待发送图片预览 -->
+    <view wx:if="{{pendingImages && pendingImages.length}}" class="pending-images">
+      <block wx:for="{{pendingImages}}" wx:key="*this">
+        <view class="pending-image-item">
+          <image class="pending-image" src="{{item}}" mode="aspectFill" />
+        </view>
+      </block>
+    </view>
+
     <view class="input-wrapper">
+      <view class="more-btn" bindtap="onMore">
+        <view class="more-icon">+</view>
+      </view>
       <input
         class="chat-input"
         placeholder="请输入消息..."
@@ -28,7 +52,12 @@
         bindinput="onInputChange"
         value="{{inputValue}}"
       />
-      <button class="send-btn" hover-class="none" bindtap="onSend">
+      <button
+        class="send-btn {{(inputValue || (pendingImages && pendingImages.length)) ? 'send-btn--enabled' : 'send-btn--disabled'}}"
+        hover-class="none"
+        bindtap="onSend"
+        disabled="{{!inputValue && !(pendingImages && pendingImages.length)}}"
+      >
         <image class="send-icon" src="{{sendIcon}}" mode="aspectFit"></image>
       </button>
     </view>

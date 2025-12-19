@@ -1,0 +1,46 @@
+.auto-img{
+  width: 100%;
+  display: block;
+}
+
+.pro-info{
+  margin-top: 10rpx;
+}
+
+.name{
+  font-size: 28rpx;
+}
+
+.enname{
+  font-size: 24rpx;
+  color: #666;
+}
+
+.price{
+  font-size: 28rpx;
+  color: #E53935;
+  font-weight: bold;
+  margin-top: 10rpx;
+}
+
+.one-text{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.img-box{
+  position: relative;
+}
+
+.tag{
+  position: absolute;
+  height: 36rpx;
+  right: 0;
+  top: 0;
+  background-color: #0C34BA;
+  color: #fff;
+  font-size: 24rpx;
+  padding: 4rpx 10rpx;
+  border-top-left-radius: 22rpx;
+}
