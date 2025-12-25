@@ -7,7 +7,7 @@ Page({
   },
 
   onLoad(options) {
-    // 如果是从订单详情页跳转过来
+    // 如果从订单详情页跳转过来
     if (options.orderId) {
       this.setData({
         selectMode: true,

@@ -22,7 +22,7 @@ Page({
   loadCoupons() {
     let coupons = wx.getStorageSync('coupons') || []
     
-    // 如果没有数据，初始化一些示例数据
+    // 如果没数据，初始化一些示例数据
     if (coupons.length === 0) {
       coupons = this.getDefaultCoupons()
       wx.setStorageSync('coupons', coupons)
