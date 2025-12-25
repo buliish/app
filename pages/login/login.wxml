@@ -45,7 +45,7 @@
     <button class="login-btn" bindtap="login">登录</button>
   </view>
 
-  <!-- 辅助链接（跳转到注册/找回密码） -->
+  <!-- 辅助链接（跳转到注册页面/找回密码） -->
   <view class="link-wrap">
     <text class="link-item left" bindtap="toFindPwd">找回密码</text>
     <text class="link-item right" bindtap="toRegister">没有账号，去注册</text>
