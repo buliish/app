@@ -1,0 +1,104 @@
+<!--pages/getCoupon/getCoupon.wxml-->
+<view class="get-coupon-container">
+  <!-- 累计消费金额显示 -->
+  <view class="spent-header">
+    <view class="header-bg"></view>
+    <view class="header-content">
+      <view class="spent-title">累计消费</view>
+      <view class="spent-amount">
+        <text class="amount-symbol">¥</text>
+        <text class="amount-value">{{todaySpent}}</text>
+      </view>
+      <view class="spent-desc">今日消费金额（每天重置）</view>
+    </view>
+  </view>
+
+  <!-- 可领取优惠券列表 -->
+  <scroll-view class="coupons-scroll" scroll-y>
+    <view class="coupon-item" wx:for="{{availableCoupons}}" wx:key="id">
+      <view class="coupon-card {{item.canReceive ? 'can-receive' : ''}} {{item.isReceived ? 'received' : ''}} {{!item.isUnlocked ? 'locked' : ''}}">
+        <!-- 左侧金额区域 -->
+        <view class="coupon-left">
+          <view class="coupon-amount">
+            <text class="amount-symbol">¥</text>
+            <text class="amount-value">{{item.amount}}</text>
+          </view>
+          <view class="amount-desc" wx:if="{{item.type === 'full'}}">满{{item.fullAmount}}可用</view>
+          <view class="amount-desc" wx:else>无门槛</view>
+        </view>
+        
+        <!-- 中间虚线分割 -->
+        <view class="coupon-divider">
+          <view class="divider-dot top"></view>
+          <view class="divider-line"></view>
+          <view class="divider-dot bottom"></view>
+        </view>
+        
+        <!-- 右侧信息区域 -->
+        <view class="coupon-right">
+          <view class="coupon-header">
+            <view class="coupon-name-wrapper">
+              <view class="coupon-name">{{item.name}}</view>
+              <!-- 状态图标 -->
+              <view class="status-icon" wx:if="{{item.isReceived}}">
+                <text class="icon-text">✓</text>
+              </view>
+              <view class="status-icon lock-icon" wx:elif="{{!item.isUnlocked}}">
+                <text class="icon-text">🔒</text>
+              </view>
+              <view class="status-icon unlock-icon" wx:else>
+                <text class="icon-text">✨</text>
+              </view>
+            </view>
+            <view class="coupon-desc">{{item.desc}}</view>
+          </view>
+          
+          <!-- 解锁进度条 -->
+          <view class="unlock-progress" wx:if="{{!item.isReceived && !item.isUnlocked}}">
+            <view class="progress-info">
+              <text class="progress-label">解锁进度</text>
+              <text class="progress-percent">{{item.progressPercent}}%</text>
+            </view>
+            <view class="progress-bar">
+              <view class="progress-fill" style="width: {{item.progress}}%"></view>
+            </view>
+            <view class="progress-text">
+              <text>还需消费 ¥{{item.remainingAmount}} 解锁</text>
+            </view>
+          </view>
+          
+          <!-- 已解锁提示 -->
+          <view class="unlocked-tip" wx:if="{{item.isUnlocked && !item.isReceived}}">
+            <text class="tip-text">🎉 已解锁，快来领取吧！</text>
+          </view>
+          
+          <!-- 已领取提示 -->
+          <view class="received-tip" wx:if="{{item.isReceived}}">
+            <text class="tip-text">已领取，可在"我的优惠券"中查看</text>
+          </view>
+          
+          <!-- 领取按钮 -->
+          <view class="receive-btn-wrapper" wx:if="{{!item.isReceived}}">
+            <button 
+              class="receive-btn {{item.canReceive ? 'active' : 'disabled'}}"
+              bindtap="receiveCoupon"
+              data-id="{{item.id}}"
+              disabled="{{!item.canReceive}}"
+            >
+              <text wx:if="{{item.canReceive}}">立即领取</text>
+              <text wx:else>未解锁</text>
+            </button>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-coupons" wx:if="{{availableCoupons.length === 0}}">
+      <view class="empty-icon">🎫</view>
+      <text class="empty-text">暂无可领取的优惠券</text>
+      <text class="empty-desc">快去消费解锁更多优惠券吧</text>
+    </view>
+  </scroll-view>
+</view>
+

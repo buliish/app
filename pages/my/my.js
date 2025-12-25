@@ -82,14 +82,6 @@ Page({
     })
   },
 
-  // 跳转到设置
-  goToSettings() {
-    wx.showToast({
-      title: '设置功能开发中',
-      icon: 'none'
-    })
-  },
-
   // 退出登录
   logout() {
     wx.showModal({

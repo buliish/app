@@ -145,5 +145,52 @@
 .empty-text {
   font-size: 32rpx;
   color: #666;
+  margin-bottom: 40rpx;
+}
+
+/* 去获得按钮 */
+.get-coupon-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background-color: #fff;
+  border-top: 1rpx solid #eee;
+  box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.get-coupon-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: linear-gradient(135deg, #0C34BA 0%, #1a4fd4 100%);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: bold;
+  border-radius: 44rpx;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0;
+}
+
+.get-coupon-btn::after {
+  border: none;
+}
+
+.get-coupon-btn:active {
+  opacity: 0.8;
+}
+
+.empty-coupons .get-coupon-btn {
+  width: 300rpx;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 

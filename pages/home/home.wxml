@@ -1,16 +1,57 @@
 <!-- 页面容器 -->
 <view class="home-container">
   <!-- 搜索栏：修复search.png路径 -->
-  <view class="search-bar" bindtap="onSearchTap">
-    <image class="search-icon" src="../../images/home.png"></image>
-    <input 
-      class="search-input" 
-      placeholder="输入商品名称" 
-      value="{{searchValue}}"
-      bindinput="onSearchInput"
-      bindconfirm="onSearchConfirm"
-      confirm-type="search"
-    />
+  <view class="search-bar-wrapper">
+    <view class="search-bar" bindtap="onSearchTap">
+      <image class="search-icon" src="../../images/home.png"></image>
+      <input 
+        class="search-input" 
+        placeholder="输入商品名称" 
+        value="{{searchValue}}"
+        bindinput="onSearchInput"
+        bindconfirm="onSearchConfirm"
+        bindfocus="onSearchTap"
+        confirm-type="search"
+      />
+    </view>
+    
+    <!-- 搜索历史面板 -->
+    <view class="search-history-panel" wx:if="{{showHistory}}">
+      <!-- AI智能推荐区域 -->
+      <view class="ai-suggestions" wx:if="{{aiSuggestions.length > 0}}">
+        <view class="ai-suggestions-title">🤖 AI智能推荐</view>
+        <view class="ai-suggestions-list">
+          <button 
+            class="ai-suggestion-tag" 
+            wx:for="{{aiSuggestions}}" 
+            wx:key="index"
+            data-keyword="{{item}}"
+            bindtap="onAISuggestionTap"
+          >
+            {{item}}
+          </button>
+        </view>
+      </view>
+      
+      <!-- 搜索历史区域 -->
+      <view wx:if="{{searchHistory.length > 0}}">
+        <view class="history-header">
+          <text class="history-title">搜索历史</text>
+          <text class="clear-all-btn" bindtap="onClearAllHistory">清除全部</text>
+        </view>
+        <view class="history-list">
+          <view class="history-item" wx:for="{{searchHistory}}" wx:key="index">
+            <text class="history-text" bindtap="onHistoryItemTap" data-keyword="{{item}}">{{item}}</text>
+            <text class="delete-icon" bindtap="onDeleteHistoryItem" data-keyword="{{item}}">×</text>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 空状态提示 -->
+      <view wx:if="{{searchHistory.length === 0 && aiSuggestions.length === 0}}" class="empty-tip">
+        <text>暂无搜索历史</text>
+      </view>
+    </view>
   </view>
 
   <!-- 轮播组件：优化wx:key（建议用唯一id，无则用index） -->
@@ -26,7 +67,7 @@
   </swiper>
 
   <!-- 商品列表：增加空数据提示 -->
-  <view class="product-grid">
+  <view class="product-grid" wx:if="{{!showHistory}}">
     <view class="product-item" wx:for="{{productData}}" wx:key="index" bind:tap="viewDetail" data-pid="{{item.pid}}">
       <Product pro-data="{{item}}"></Product>
     </view>
@@ -35,4 +76,7 @@
       暂无商品数据
     </view>
   </view>
+  
+  <!-- 遮罩层：点击隐藏搜索历史 -->
+  <view class="history-mask" wx:if="{{showHistory}}" bindtap="onHideHistory"></view>
 </view>

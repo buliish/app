@@ -105,6 +105,13 @@ Page({
       currentTab: tab
     })
     this.loadCoupons()
+  },
+
+  // 跳转到领取优惠券页面
+  goToGetCoupon() {
+    wx.navigateTo({
+      url: '../getCoupon/getCoupon'
+    })
   }
 })
 

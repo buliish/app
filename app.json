@@ -14,6 +14,7 @@
     "pages/orders/orders",
     "pages/orderDetail/orderDetail",
     "pages/coupons/coupons",
+    "pages/getCoupon/getCoupon",
     "pages/payment/payment",
     "pages/payModal/payModal",
     "pages/selectCoupon/selectCoupon"

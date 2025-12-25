@@ -40,7 +40,13 @@
     <view class="empty-coupons" wx:if="{{couponList.length === 0}}">
       <image class="empty-icon" src="../../images/shopbag_bg.png" mode="aspectFit"></image>
       <text class="empty-text">暂无优惠券</text>
+      <button class="get-coupon-btn" bindtap="goToGetCoupon">去获得</button>
     </view>
   </scroll-view>
+  
+  <!-- 去获得按钮（有优惠券时也显示） -->
+  <view class="get-coupon-footer">
+    <button class="get-coupon-btn" bindtap="goToGetCoupon">去获得</button>
+  </view>
 </view>
 
