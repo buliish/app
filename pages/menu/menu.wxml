@@ -8,7 +8,15 @@
     <view class="search-icon">
       <image class="auto-img" src="../../images/home.png" mode="widthFix"/>
     </view>
-    <input class="search-ipt" type="text" placeholder="请输入商品名称"/>
+    <input 
+      class="search-ipt" 
+      type="text" 
+      placeholder="请输入商品名称"
+      value="{{searchValue}}"
+      bindinput="onSearchInput"
+      bindconfirm="onSearchConfirm"
+      confirm-type="search"
+    />
   </view>
 </view>
 
@@ -26,8 +34,13 @@
   <!--商品列表-->
   <view class="list">
       <view class="list-box">
-        <view class="list-item" wx:for="{{productData}}" wx:key="index">
+        <view class="list-item" wx:for="{{productData}}" wx:key="index" bindtap="viewDetail" data-pid="{{item.pid}}">
           <Product pro-data="{{item}}"></Product>
+        </view>
+        <!-- 空数据提示 -->
+        <view wx:if="{{productData.length === 0}}" class="empty-tip">
+          <text wx:if="{{searchValue}}">未找到相关商品</text>
+          <text wx:else>暂无商品数据</text>
         </view>
       </view>
   </view>

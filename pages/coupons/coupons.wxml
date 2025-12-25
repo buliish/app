@@ -1,0 +1,46 @@
+<!--pages/coupons/coupons.wxml-->
+<view class="coupons-container">
+  <!-- 优惠券标签 -->
+  <view class="coupon-tabs">
+    <view 
+      class="tab-item {{currentTab === item.value ? 'active' : ''}}"
+      wx:for="{{tabs}}" 
+      wx:key="value"
+      bindtap="switchTab"
+      data-tab="{{item.value}}"
+    >
+      {{item.label}}
+    </view>
+  </view>
+
+  <!-- 优惠券列表 -->
+  <scroll-view class="coupons-list" scroll-y>
+    <view class="coupon-item" wx:for="{{couponList}}" wx:key="id">
+      <view class="coupon-card {{item.status === 'used' ? 'used' : ''}} {{item.status === 'expired' ? 'expired' : ''}}">
+        <!-- 左侧金额区域 -->
+        <view class="coupon-amount">
+          <text class="amount-symbol">¥</text>
+          <text class="amount-value">{{item.amount}}</text>
+          <text class="amount-desc" wx:if="{{item.type === 'full'}}">满{{item.fullAmount}}可用</text>
+          <text class="amount-desc" wx:else>无门槛</text>
+        </view>
+        
+        <!-- 右侧信息区域 -->
+        <view class="coupon-info">
+          <view class="coupon-name">{{item.name}}</view>
+          <view class="coupon-desc">{{item.desc}}</view>
+          <view class="coupon-time">有效期至 {{item.expireTime}}</view>
+          <view class="coupon-status" wx:if="{{item.status === 'used'}}">已使用</view>
+          <view class="coupon-status expired" wx:if="{{item.status === 'expired'}}">已过期</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-coupons" wx:if="{{couponList.length === 0}}">
+      <image class="empty-icon" src="../../images/shopbag_bg.png" mode="aspectFit"></image>
+      <text class="empty-text">暂无优惠券</text>
+    </view>
+  </scroll-view>
+</view>
+

@@ -1,0 +1,7 @@
+<!--components/Stepper/Stepper.wxml-->
+<view class="stepper-container">
+  <view class="stepper-btn reduce" bindtap="onReduce" data-type="reduce">-</view>
+  <view class="stepper-value">{{value}}</view>
+  <view class="stepper-btn add" bindtap="onAdd" data-type="add">+</view>
+</view>
+

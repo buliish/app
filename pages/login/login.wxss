@@ -1,0 +1,123 @@
+/* 页面整体 */
+page {
+  background-color: #ffffff;
+  height: 100%;
+}
+
+.login-container {
+  padding: 60rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* logo区域 */
+.logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 80rpx;
+}
+.logo-img {
+  width: 180rpx;
+  height: 180rpx;
+  margin-bottom: 20rpx;
+}
+.logo-text {
+  font-size: 38rpx;
+  font-weight: 500;
+  color: #333333;
+}
+
+/* 输入区域 */
+.input-wrap {
+  width: 100%;
+  margin-bottom: 60rpx;
+}
+.input-row {
+  display: flex;
+  align-items: center;
+  height: 90rpx;
+  border: 1px solid #eeeeee;
+  border-radius: 8rpx;
+  margin-bottom: 30rpx;
+  padding: 0 20rpx;
+}
+.input-label {
+  width: 140rpx;
+  font-size: 30rpx;
+  color: #333333;
+}
+.input-field, .input-field-pwd {
+  flex: 1;
+  height: 100%;
+  font-size: 30rpx;
+  padding-left: 10rpx;
+}
+.password-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+.eye-icon {
+  width: 40rpx;
+  height: 40rpx;
+  margin-left: 10rpx;
+  padding: 10rpx; /* 扩大点击区域 */
+}
+
+/* 登录按钮容器 */
+.login-btn-wrap {
+  width: 100%;
+  margin-bottom: 30rpx;
+}
+.login-btn {
+  width: 100% !important;
+  height: 90rpx !important;
+  background-color: #0C34BA !important;
+  color: #ffffff !important;
+  font-size: 34rpx !important;
+  border-radius: 8rpx !important;
+  padding: 0 !important;
+  border: none !important;
+  line-height: 90rpx !important;
+}
+.login-btn::after {
+  border: none !important;
+}
+
+/* 辅助链接（左右分布） */
+.link-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 40rpx;
+}
+.link-item {
+  font-size: 28rpx;
+  color: #666666;
+  padding: 10rpx;
+  pointer-events: auto;
+}
+
+/* 提示信息 */
+.tips-wrap {
+  width: 100%;
+  font-size: 26rpx;
+  color: #999999;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.tips-title {
+  font-weight: bold;
+  margin-bottom: 10rpx;
+  display: block;
+}
+.tips-content {
+  display: block;
+  line-height: 1.4;
+}

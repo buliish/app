@@ -1,0 +1,64 @@
+<!--pages/payModal/payModal.wxml-->
+<view class="pay-modal-container">
+  <!-- 遮罩层 -->
+  <view class="mask" bindtap="cancelPay"></view>
+  
+  <!-- 支付弹窗 -->
+  <view class="pay-modal" catchtap="stopPropagation">
+    <!-- 头部 -->
+    <view class="pay-header">
+      <text class="pay-title">确认支付</text>
+      <view class="close-btn" bindtap="cancelPay">
+        <text class="close-icon">×</text>
+      </view>
+    </view>
+
+    <!-- 支付金额 -->
+    <view class="pay-amount">
+      <text class="amount-label">支付金额</text>
+      <text class="amount-value">¥{{totalPrice}}</text>
+    </view>
+
+    <!-- 支付方式（模拟） -->
+    <view class="pay-method">
+      <view class="method-item">
+        <image class="method-icon" src="../../images/home.png" mode="aspectFit"></image>
+        <text class="method-name">微信支付</text>
+        <text class="method-check">✓</text>
+      </view>
+    </view>
+
+    <!-- 密码输入框 -->
+    <view class="password-section">
+      <text class="password-label">请输入支付密码</text>
+      <view class="password-input-container">
+        <input 
+          class="password-input" 
+          type="number" 
+          password="{{false}}"
+          maxlength="6"
+          value="{{payPassword}}"
+          bindinput="onPasswordInput"
+          focus="{{true}}"
+          cursor-spacing="0"
+        />
+        <view class="password-dots">
+          <view class="password-dot {{showPassword[0] ? 'filled' : ''}} {{currentIndex === 0 ? 'active' : ''}}"></view>
+          <view class="password-dot {{showPassword[1] ? 'filled' : ''}} {{currentIndex === 1 ? 'active' : ''}}"></view>
+          <view class="password-dot {{showPassword[2] ? 'filled' : ''}} {{currentIndex === 2 ? 'active' : ''}}"></view>
+          <view class="password-dot {{showPassword[3] ? 'filled' : ''}} {{currentIndex === 3 ? 'active' : ''}}"></view>
+          <view class="password-dot {{showPassword[4] ? 'filled' : ''}} {{currentIndex === 4 ? 'active' : ''}}"></view>
+          <view class="password-dot {{showPassword[5] ? 'filled' : ''}} {{currentIndex === 5 ? 'active' : ''}}"></view>
+        </view>
+      </view>
+      <view class="password-hint">提示：输入任意6位数字即可完成支付</view>
+    </view>
+
+    <!-- 底部按钮 -->
+    <view class="pay-actions">
+      <button class="cancel-btn" bindtap="cancelPay">取消</button>
+      <button class="confirm-btn" bindtap="confirmPay">确认支付</button>
+    </view>
+  </view>
+</view>
+

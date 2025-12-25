@@ -1,2 +1,80 @@
 <!--pages/my/my.wxml-->
-<text>pages/my/my.wxml</text>
+<view class="my-container">
+  <!-- 用户信息区域 -->
+  <view class="user-header">
+    <view class="user-avatar">
+      <image class="avatar-img" src="../../images/my.png" mode="aspectFill"></image>
+    </view>
+    <view class="user-info">
+      <text class="user-name">{{userInfo.nickname || '未登录'}}</text>
+      <text class="user-phone" wx:if="{{userInfo.phone}}">{{userInfo.phone}}</text>
+    </view>
+    <view class="login-btn" wx:if="{{!userInfo}}" bindtap="goToLogin">
+      <text>登录</text>
+    </view>
+  </view>
+
+  <!-- 订单统计 -->
+  <view class="order-stats" wx:if="{{userInfo}}">
+    <view class="stat-item" bindtap="goToOrders" data-status="all">
+      <text class="stat-num">{{orderStats.all || 0}}</text>
+      <text class="stat-label">全部订单</text>
+    </view>
+    <view class="stat-item" bindtap="goToOrders" data-status="pending">
+      <text class="stat-num">{{orderStats.pending || 0}}</text>
+      <text class="stat-label">待付款</text>
+    </view>
+    <view class="stat-item" bindtap="goToOrders" data-status="delivering">
+      <text class="stat-num">{{orderStats.delivering || 0}}</text>
+      <text class="stat-label">配送中</text>
+    </view>
+    <view class="stat-item" bindtap="goToOrders" data-status="completed">
+      <text class="stat-num">{{orderStats.completed || 0}}</text>
+      <text class="stat-label">已完成</text>
+    </view>
+  </view>
+
+  <!-- 功能菜单 -->
+  <view class="menu-list">
+    <view class="menu-item" bindtap="goToShopbag">
+      <view class="menu-left">
+        <image class="menu-icon" src="../../images/shopbag.png" mode="aspectFit"></image>
+        <text class="menu-text">购物袋</text>
+      </view>
+      <text class="menu-arrow">></text>
+    </view>
+    <view class="menu-item" bindtap="goToOrders">
+      <view class="menu-left">
+        <image class="menu-icon" src="../../images/menu.png" mode="aspectFit"></image>
+        <text class="menu-text">我的订单</text>
+      </view>
+      <text class="menu-arrow">></text>
+    </view>
+    <view class="menu-item" bindtap="goToAddress">
+      <view class="menu-left">
+        <image class="menu-icon" src="../../images/home.png" mode="aspectFit"></image>
+        <text class="menu-text">收货地址</text>
+      </view>
+      <text class="menu-arrow">></text>
+    </view>
+    <view class="menu-item" bindtap="goToCoupons">
+      <view class="menu-left">
+        <image class="menu-icon" src="../../images/my.png" mode="aspectFit"></image>
+        <text class="menu-text">优惠券</text>
+      </view>
+      <text class="menu-arrow">></text>
+    </view>
+    <view class="menu-item" bindtap="goToSettings">
+      <view class="menu-left">
+        <image class="menu-icon" src="../../images/menu.png" mode="aspectFit"></image>
+        <text class="menu-text">设置</text>
+      </view>
+      <text class="menu-arrow">></text>
+    </view>
+  </view>
+
+  <!-- 退出登录 -->
+  <view class="logout-btn" wx:if="{{userInfo}}" bindtap="logout">
+    <text>退出登录</text>
+  </view>
+</view>

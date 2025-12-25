@@ -1,0 +1,76 @@
+<!--pages/newAddress/newAddress.wxml-->
+<view class="address-container">
+  <view class="form-section">
+    <!-- 收货人姓名 -->
+    <view class="form-item">
+      <text class="form-label">收货人</text>
+      <input 
+        class="form-input" 
+        placeholder="请输入收货人姓名"
+        value="{{name}}"
+        bindinput="onNameInput"
+        maxlength="20"
+      />
+    </view>
+
+    <!-- 手机号 -->
+    <view class="form-item">
+      <text class="form-label">手机号</text>
+      <input 
+        class="form-input" 
+        type="number"
+        placeholder="请输入手机号"
+        value="{{phone}}"
+        bindinput="onPhoneInput"
+        maxlength="11"
+      />
+    </view>
+
+    <!-- 所在地区 -->
+    <view class="form-item">
+      <text class="form-label">所在地区</text>
+      <picker 
+        mode="region" 
+        value="{{regionArray}}"
+        bindchange="onRegionChange"
+        class="form-value"
+      >
+        <view class="picker-value">
+          <text class="region-text {{regionText ? '' : 'placeholder'}}">
+            {{regionText || '请选择省市区'}}
+          </text>
+          <text class="arrow">></text>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 详细地址 -->
+    <view class="form-item form-item-textarea">
+      <text class="form-label">详细地址</text>
+      <textarea 
+        class="form-textarea" 
+        placeholder="请输入详细地址，如街道、门牌号等"
+        value="{{detailAddress}}"
+        bindinput="onDetailAddressInput"
+        maxlength="100"
+        auto-height
+      />
+    </view>
+
+    <!-- 设为默认收货地址 -->
+    <view class="form-item switch-item">
+      <text class="form-label">设为默认收货地址</text>
+      <switch 
+        checked="{{isDefault}}"
+        bindchange="onSwitchChange"
+        color="#0C34BA"
+      />
+    </view>
+  </view>
+
+  <!-- 保存按钮 -->
+  <view class="save-btn-wrap">
+    <button class="save-btn" bindtap="saveAddress">保存</button>
+  </view>
+</view>
+

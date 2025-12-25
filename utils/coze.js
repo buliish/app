@@ -1,8 +1,14 @@
 // utils/coze.js - 豆包(Coze) AI Agent 流式调用工具
 
 // 1. 基础配置（严格按你提供的示例，只是修正拼写和语法）
+//const COZE_CONFIG = {
+//  BOT_ID: '7584478614508027945',
+//  API_KEY: 'pat_y6zA8YUs0dRZr5sqDNjomAUhIl94VGM0ebjp9SGQb5khHZgxahq1Lcl8rLA7LG5x',
+//  API_URL: 'https://api.coze.cn/v3/chat',
+//};
+
 const COZE_CONFIG = {
-  BOT_ID: '7584478614508027945',
+  BOT_ID: '7587462701082411042',
   API_KEY: 'pat_y6zA8YUs0dRZr5sqDNjomAUhIl94VGM0ebjp9SGQb5khHZgxahq1Lcl8rLA7LG5x',
   API_URL: 'https://api.coze.cn/v3/chat',
 };
@@ -18,11 +24,16 @@ const decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8') : 
  */
 function callCozeAPI(message, onUpdate) {
   return new Promise((resolve, reject) => {
+    // 记录开始时间
+    const startTime = Date.now();
+    console.log(`[Coze API] 开始调用，时间: ${new Date().toISOString()}`);
+
     if (!decoder) {
       reject(new Error('当前环境不支持 TextDecoder，无法处理流式响应'));
       return;
     }
 
+    const requestStartTime = Date.now();
     const requestTask = wx.request({
       url: COZE_CONFIG.API_URL,
       method: 'POST',
@@ -47,9 +58,14 @@ function callCozeAPI(message, onUpdate) {
       },
       enableChunked: true,
       success() {
-        console.log('Coze 请求已发送');
+        const requestDuration = Date.now() - requestStartTime;
+        console.log(`[Coze API] 请求已发送，耗时: ${requestDuration}ms`);
       },
-      fail: reject,
+      fail: (error) => {
+        const failDuration = Date.now() - startTime;
+        console.error(`[Coze API] 请求失败，总耗时: ${failDuration}ms`, error);
+        reject(error);
+      },
     });
 
     if (!requestTask || typeof requestTask.onChunkReceived !== 'function') {
@@ -60,8 +76,19 @@ function callCozeAPI(message, onUpdate) {
     let buffer = '';
     let followUpQuestions = [];
     let fullContent = '';
+    let firstChunkTime = null;
+    let chunkCount = 0;
 
     requestTask.onChunkReceived((response) => {
+      const chunkStartTime = Date.now();
+      chunkCount++;
+      
+      // 记录第一个 chunk 的接收时间
+      if (firstChunkTime === null) {
+        firstChunkTime = Date.now();
+        const timeToFirstChunk = firstChunkTime - requestStartTime;
+        console.log(`[Coze API] 收到第一个数据块，耗时: ${timeToFirstChunk}ms`);
+      }
       try {
         const uint8 = new Uint8Array(response.data);
         const chunk = decoder.decode(uint8);
@@ -112,6 +139,9 @@ function callCozeAPI(message, onUpdate) {
                 break;
               }
               case 'done': {
+                const totalDuration = Date.now() - startTime;
+                const processingDuration = Date.now() - chunkStartTime;
+                console.log(`[Coze API] 处理完成 - 总耗时: ${totalDuration}ms, 最后chunk处理: ${processingDuration}ms, 总chunk数: ${chunkCount}`);
                 resolve({
                   content: fullContent,
                   followUpQuestions,
@@ -122,11 +152,18 @@ function callCozeAPI(message, onUpdate) {
                 break;
             }
           } catch (e) {
-            console.error('JSON 解析失败:', e, dataStr);
+            console.error(`[Coze API] JSON 解析失败，chunk处理耗时: ${Date.now() - chunkStartTime}ms`, e, dataStr);
           }
         }
+        
+        // 记录每个 chunk 的处理耗时（每10个chunk打印一次，避免日志过多）
+        if (chunkCount % 10 === 0) {
+          const chunkProcessDuration = Date.now() - chunkStartTime;
+          console.log(`[Coze API] 已处理 ${chunkCount} 个chunk，当前chunk处理耗时: ${chunkProcessDuration}ms`);
+        }
       } catch (error) {
-        console.error('处理流式数据失败:', error);
+        const errorDuration = Date.now() - startTime;
+        console.error(`[Coze API] 处理流式数据失败，总耗时: ${errorDuration}ms`, error);
         reject(error);
       }
     });

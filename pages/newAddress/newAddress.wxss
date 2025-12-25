@@ -1,0 +1,107 @@
+/* pages/newAddress/newAddress.wxss */
+.address-container {
+  min-height: 100vh;
+  background-color: #f2f2f2;
+  padding-bottom: 40rpx;
+}
+
+.form-section {
+  background-color: #fff;
+  margin-top: 20rpx;
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f2f2f2;
+  min-height: 100rpx;
+  box-sizing: border-box;
+}
+
+.form-item:last-child {
+  border-bottom: none;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: #333;
+  width: 160rpx;
+  flex-shrink: 0;
+}
+
+.form-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.form-value {
+  flex: 1;
+}
+
+.picker-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.region-text {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.region-text.placeholder {
+  color: #999;
+}
+
+.arrow {
+  font-size: 28rpx;
+  color: #999;
+  margin-left: 20rpx;
+}
+
+.form-item-textarea {
+  align-items: flex-start;
+  padding-top: 30rpx;
+  padding-bottom: 30rpx;
+}
+
+.form-textarea {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+  min-height: 120rpx;
+  line-height: 1.6;
+}
+
+.switch-item {
+  justify-content: space-between;
+}
+
+.save-btn-wrap {
+  padding: 40rpx 30rpx;
+}
+
+.save-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  background-color: #0C34BA;
+  color: #fff;
+  border-radius: 8rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.save-btn::after {
+  border: none;
+}
+

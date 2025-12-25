@@ -1,15 +1,26 @@
 {
   "pages": [
-    "pages/menu/menu",
     "pages/home/home",
+    "pages/detail/detail",
+    "pages/login/login",
+    "pages/register/register",
+    "pages/menu/menu",
     "pages/shopbag/shopbag",
     "pages/index/index",
     "pages/logs/logs",
-    "pages/my/my"
+    "pages/my/my",
+    "pages/newAddress/newAddress",
+    "pages/addressList/addressList",
+    "pages/orders/orders",
+    "pages/orderDetail/orderDetail",
+    "pages/coupons/coupons",
+    "pages/payment/payment",
+    "pages/payModal/payModal",
+    "pages/selectCoupon/selectCoupon"
   ],
   "window": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "ai助手",
+    "navigationBarTitleText": "瑞幸咖啡",
     "navigationBarBackgroundColor": "#ffffff"
   },
   "style": "v2",
@@ -33,10 +44,16 @@
         "selectedIconPath": "./images/menu_active.png"
       },
       {
-        "pagePath": "pages/index/index",
+        "pagePath": "pages/shopbag/shopbag",
         "text": "购物袋",
         "iconPath": "./images/shopbag.png",
         "selectedIconPath": "./images/shopbag_active.png"
+      },
+      {
+        "pagePath": "pages/index/index",
+        "text": "ai助手",
+        "iconPath": "./images/my.png",
+        "selectedIconPath": "./images/my_active.png"
       },
       {
         "pagePath": "pages/my/my",

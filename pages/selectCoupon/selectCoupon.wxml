@@ -1,0 +1,56 @@
+<!--pages/selectCoupon/selectCoupon.wxml-->
+<view class="select-coupon-container">
+  <!-- 头部 -->
+  <view class="header">
+    <text class="title">选择优惠券</text>
+    <view class="no-coupon-btn" bindtap="noCoupon">
+      <text>不使用</text>
+    </view>
+  </view>
+
+  <!-- 优惠券列表 -->
+  <scroll-view class="coupon-list" scroll-y>
+    <view 
+      class="coupon-item {{item.id === selectedCouponId ? 'selected' : ''}} {{!item.canUse ? 'disabled' : ''}}"
+      wx:for="{{couponList}}" 
+      wx:key="id"
+      bindtap="selectCoupon"
+      data-id="{{item.id}}"
+    >
+      <view class="coupon-left">
+        <view class="coupon-amount">
+          <text class="amount-symbol">¥</text>
+          <text class="amount-value">{{item.amount}}</text>
+        </view>
+        <view class="coupon-type" wx:if="{{item.type === 'full'}}">
+          <text>满{{item.fullAmount}}可用</text>
+        </view>
+        <view class="coupon-type" wx:else>
+          <text>无门槛</text>
+        </view>
+      </view>
+      <view class="coupon-right">
+        <view class="coupon-name">{{item.name}}</view>
+        <view class="coupon-desc">{{item.desc}}</view>
+        <view class="coupon-expire">有效期至：{{item.expireTime}}</view>
+        <view class="coupon-condition" wx:if="{{item.type === 'full' && totalPrice < item.fullAmount}}">
+          <text>还差¥{{item.needMoreAmount}}可用</text>
+        </view>
+      </view>
+      <view class="coupon-check" wx:if="{{item.id === selectedCouponId}}">
+        <text>✓</text>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-coupon" wx:if="{{couponList.length === 0}}">
+      <text>暂无可用优惠券</text>
+    </view>
+  </scroll-view>
+
+  <!-- 底部确认按钮 -->
+  <view class="footer">
+    <button class="confirm-btn" bindtap="confirmSelect">确认</button>
+  </view>
+</view>
+

@@ -1,0 +1,60 @@
+<view class="login-container">
+  <!-- logo区域（和注册页一致） -->
+  <view class="logo-wrap">
+    <image class="logo-img" src="../../images/home_active.png"></image>
+    <text class="logo-text">Luckin Coffee</text>
+  </view>
+
+  <!-- 输入区域 -->
+  <view class="input-wrap">
+    <!-- 手机号输入 -->
+    <view class="input-row">
+      <text class="input-label">手机号</text>
+      <input 
+        class="input-field" 
+        placeholder="输入手机号" 
+        type="number" 
+        model:value="{{phone}}"
+        maxlength="11"
+      />
+    </view>
+
+    <!-- 密码输入（和注册页密码框样式一致） -->
+    <view class="input-row">
+      <text class="input-label">密码</text>
+      <view class="password-wrap">
+        <input 
+          class="input-field-pwd" 
+          placeholder="输入密码" 
+          password="{{!showPassword}}" 
+          model:value="{{password}}"
+          maxlength="16"
+        />
+        <image 
+          class="eye-icon" 
+          src="../../images/{{showPassword ? 'home_active' : 'home'}}.png"
+          mode="widthFix"
+          bindtap="togglePasswordStatus"
+        ></image>
+      </view>
+    </view>
+  </view>
+
+  <!-- 登录按钮 -->
+  <view class="login-btn-wrap">
+    <button class="login-btn" bindtap="login">登录</button>
+  </view>
+
+  <!-- 辅助链接（跳转到注册/找回密码） -->
+  <view class="link-wrap">
+    <text class="link-item left" bindtap="toFindPwd">找回密码</text>
+    <text class="link-item right" bindtap="toRegister">没有账号，去注册</text>
+  </view>
+
+  <!-- 提示信息 -->
+  <view class="tips-wrap">
+    <text class="tips-title">提示:</text>
+    <text class="tips-content">1、手机号为11位有效号码。</text>
+    <text class="tips-content">2、密码为字母开头，6-16位数字/字母组合。</text>
+  </view>
+</view>

@@ -14,7 +14,10 @@ Page({
     //选择商品类型下标
     selectedTypeIndex: 0,
     //商品数据
-    productData:[]
+    productData:[],
+    // 搜索相关
+    searchValue: '',
+    originalProductData: [] // 保存原始商品数据，用于搜索过滤
   },
 
   /**
@@ -38,7 +41,8 @@ Page({
       console.log('根据商品类型获取商品数据 data ==> ',data);
 
       this.setData({
-        productData: data.data.result
+        productData: data.data.result,
+        originalProductData: data.data.result // 保存原始数据
       })
 
     })
@@ -70,7 +74,66 @@ Page({
     let data = await getProductByType(typeId)
     console.log('根据商品类型获取商品数据 data ==>',data);
     this.setData({
-      productData: data.data.result
+      productData: data.data.result,
+      originalProductData: data.data.result, // 保存原始数据
+      searchValue: '' // 切换类型时清空搜索
     })
+  },
+
+  // 搜索输入
+  onSearchInput(e) {
+    const value = e.detail.value
+    this.setData({
+      searchValue: value
+    })
+    this.filterProducts(value)
+  },
+
+  // 搜索确认
+  onSearchConfirm(e) {
+    const value = e.detail.value
+    this.setData({
+      searchValue: value
+    })
+    this.filterProducts(value)
+  },
+
+  // 过滤商品
+  filterProducts(keyword) {
+    const { originalProductData } = this.data
+    if (!keyword || keyword.trim() === '') {
+      // 如果搜索关键词为空，显示所有商品
+      this.setData({
+        productData: originalProductData
+      })
+      return
+    }
+
+    // 过滤商品（根据商品名称和英文名称）
+    const filtered = originalProductData.filter(item => {
+      const name = (item.name || '').toLowerCase()
+      const enname = (item.enname || '').toLowerCase()
+      const searchKey = keyword.toLowerCase()
+      return name.includes(searchKey) || enname.includes(searchKey)
+    })
+
+    this.setData({
+      productData: filtered
+    })
+  },
+
+  // 查看商品详情
+  viewDetail(e) {
+    let pid = e.currentTarget.dataset.pid;
+    if (!pid) {
+      wx.showToast({
+        title: '商品ID不存在',
+        icon: 'none'
+      })
+      return
+    }
+    wx.navigateTo({
+      url: `../detail/detail?pid=${pid}`
+    });
   }
 })

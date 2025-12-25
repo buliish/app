@@ -1,0 +1,156 @@
+/* 页面容器 */
+.detail-container {
+  background-color: #ffffff;
+  min-height: 100vh;
+  padding-bottom: 50px; /* 给底部栏留空间 */
+}
+
+/* 移除返回首页按钮样式（已删除） */
+
+/* 商品图片 */
+.goods-img-wrap {
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+}
+.goods-img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+/* 商品信息（名称、价格） */
+.goods-info {
+  padding: 0 15px 15px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+}
+.goods-name-group {
+  width: 70%;
+}
+.goods-name {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+}
+.g-tag {
+  background-color: #0C34BA;
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin-right: 5px;
+}
+.goods-en-name {
+  font-size: 12px;
+  color: #999;
+}
+.goods-price {
+  font-size: 16px;
+  color: #f00;
+  font-weight: bold;
+}
+
+/* Stepper数量选择 */
+.stepper-wrap {
+  padding: 15px;
+  background-color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-top: 1px solid #f5f5f5;
+  border-bottom: 1px solid #f5f5f5;
+}
+.stepper-label {
+  font-size: 14px;
+}
+.stepper {
+  display: flex;
+  align-items: center;
+}
+.stepper-icon {
+  width: 24px;
+  height: 24px;
+  margin: 0 8px;
+}
+.stepper-value {
+  font-size: 14px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* 商品描述 */
+.desc-section {
+  padding: 0 15px 20px;
+}
+.desc-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+.desc-content {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+/* 底部操作栏 */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid #eee;
+  background-color: #fff;
+}
+.bar-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.bar-icon {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 3px;
+}
+.bar-icon.favorite-active {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(100%) saturate(5000%) hue-rotate(230deg) brightness(0.8);
+}
+.add-cart-btn {
+  flex: 2;
+  height: 100%;
+  line-height: 50px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+  background-color: #0C34BA;
+  color: #ffffff;
+}
+
+.loading-wrap, .error-wrap {
+  padding: 50px 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+}
+.error-wrap text {
+  color: #f00;
+  display: block;
+  margin-bottom: 10px;
+}
+/* 确保默认图片占位 */
+.goods-img {
+  min-height: 200px;
+  background-color: #f5f5f5;
+}

@@ -1,0 +1,81 @@
+<!--pages/payment/payment.wxml-->
+<view class="payment-container">
+  <!-- 订单号（仅从订单支付时显示） -->
+  <view class="order-no-section" wx:if="{{source === 'order' && orderNo}}">
+    <text class="order-no">订单号：{{orderNo}}</text>
+  </view>
+
+  <!-- 收货地址 -->
+  <view class="address-section" bindtap="changeAddress">
+    <view class="address-content" wx:if="{{address}}">
+      <view class="address-header">
+        <text class="address-label">收货地址</text>
+        <text class="change-address-text">修改</text>
+      </view>
+      <view class="address-info">
+        <text class="address-name-phone">{{address.name}} {{address.phone}}</text>
+        <text class="address-detail">{{address.fullAddress || (address.regionText + ' ' + address.detailAddress)}}</text>
+      </view>
+    </view>
+    <view class="address-empty" wx:else>
+      <text class="add-address-text">请选择收货地址</text>
+    </view>
+  </view>
+
+  <!-- 商品列表 -->
+  <view class="products-section">
+    <view class="section-title">商品信息</view>
+    <view class="product-item" wx:for="{{products}}" wx:key="pid">
+      <image class="product-img" src="{{item.smallImg}}" mode="aspectFill"></image>
+      <view class="product-info">
+        <view class="product-name">{{item.name}}</view>
+        <view class="product-spec">
+          <text class="product-price">¥{{item.price}}</text>
+          <text class="product-count">x{{item.count}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 优惠券选择 -->
+  <view class="coupon-section" bindtap="selectCoupon">
+    <view class="coupon-header">
+      <text class="coupon-label">优惠券</text>
+      <view class="coupon-select">
+        <text class="coupon-text" wx:if="{{selectedCoupon}}">{{selectedCoupon.name}} -¥{{discountAmount}}</text>
+        <text class="coupon-text" wx:else>选择优惠券</text>
+        <text class="coupon-arrow">></text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 价格明细 -->
+  <view class="price-section">
+    <view class="price-item">
+      <text class="price-label">商品合计</text>
+      <text class="price-value">¥{{originalPrice}}</text>
+    </view>
+    <view class="price-item" wx:if="{{discountAmount > 0}}">
+      <text class="price-label">优惠券</text>
+      <text class="price-value discount">-¥{{discountAmount}}</text>
+    </view>
+    <view class="price-item">
+      <text class="price-label">配送费</text>
+      <text class="price-value">¥0.00</text>
+    </view>
+    <view class="price-total">
+      <text class="total-label">合计</text>
+      <text class="total-price">¥{{totalPrice}}</text>
+    </view>
+  </view>
+
+  <!-- 支付按钮 -->
+  <view class="payment-bar">
+    <view class="payment-total">
+      <text class="total-label">合计：</text>
+      <text class="total-price">¥{{totalPrice}}</text>
+    </view>
+    <button class="pay-btn" bindtap="confirmPay">确认支付</button>
+  </view>
+</view>
+

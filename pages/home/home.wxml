@@ -1,2 +1,38 @@
-<!--pages/home/home.wxml-->
-<text>pages/home/home.wxml</text>
+<!-- 页面容器 -->
+<view class="home-container">
+  <!-- 搜索栏：修复search.png路径 -->
+  <view class="search-bar" bindtap="onSearchTap">
+    <image class="search-icon" src="../../images/home.png"></image>
+    <input 
+      class="search-input" 
+      placeholder="输入商品名称" 
+      value="{{searchValue}}"
+      bindinput="onSearchInput"
+      bindconfirm="onSearchConfirm"
+      confirm-type="search"
+    />
+  </view>
+
+  <!-- 轮播组件：优化wx:key（建议用唯一id，无则用index） -->
+  <swiper class="swiper-wrap" 
+          indicator-dots="{{true}}" 
+          autoplay="{{true}}" 
+          interval="{{3000}}" 
+          circular="{{true}}" 
+          indicator-active-color="#0C34BA">
+    <swiper-item wx:for="{{bannerData}}" wx:key="index">
+      <image class="banner-img" src="{{item.largeImg}}" mode="cover"></image>
+    </swiper-item>
+  </swiper>
+
+  <!-- 商品列表：增加空数据提示 -->
+  <view class="product-grid">
+    <view class="product-item" wx:for="{{productData}}" wx:key="index" bind:tap="viewDetail" data-pid="{{item.pid}}">
+      <Product pro-data="{{item}}"></Product>
+    </view>
+    <!-- 空数据提示 -->
+    <view wx:if="{{productData.length === 0}}" class="empty-tip">
+      暂无商品数据
+    </view>
+  </view>
+</view>

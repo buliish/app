@@ -8,7 +8,7 @@ Component({
     proData: {
       type: Object,
       value: {
-        smallImg: 'http://127.0.0.1:7001/assets/coffee-8752906_12807d1be0f0-dc0d-11f0-9f68-e192981364fd.jpe',
+        smallImg: '/images/home.png',
         flag: '标志',
         name: '商品名称',
         enname: 'product name',

@@ -1,0 +1,163 @@
+/* pages/addressList/addressList.wxss */
+.address-list-container {
+  min-height: 100vh;
+  background-color: #f2f2f2;
+  padding-bottom: 120rpx;
+}
+
+.address-list {
+  padding: 20rpx;
+}
+
+.address-item {
+  background-color: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+  padding: 30rpx;
+}
+
+.address-content {
+  margin-bottom: 20rpx;
+}
+
+.address-content.selectable {
+  cursor: pointer;
+}
+
+.address-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15rpx;
+}
+
+.address-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  margin-right: 20rpx;
+}
+
+.address-phone {
+  font-size: 28rpx;
+  color: #666;
+  margin-right: 20rpx;
+}
+
+.default-tag {
+  font-size: 22rpx;
+  color: #0C34BA;
+  background-color: rgba(12, 52, 186, 0.1);
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+}
+
+.address-detail {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+.address-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f2f2f2;
+}
+
+.action-btn {
+  font-size: 26rpx;
+  color: #0C34BA;
+  padding: 10rpx 30rpx;
+  margin-left: 30rpx;
+}
+
+.delete-btn {
+  color: #f00;
+}
+
+/* 空状态 */
+.empty-address {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 0 40rpx;
+  padding-top: 80rpx;
+  margin-top: -220rpx;
+}
+
+.empty-icon {
+  width: 300rpx;
+  height: 300rpx;
+  margin-bottom: 40rpx;
+  opacity: 0.5;
+}
+
+.add-address-btn-empty {
+  width: 300rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  background-color: #0C34BA;
+  color: #fff;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  margin-bottom: 40rpx;
+  margin-top: -140rpx;
+}
+
+.add-address-btn-empty::after {
+  border: none;
+}
+
+.empty-text {
+  font-size: 32rpx;
+  color: #666;
+  margin-bottom: 20rpx;
+  margin-top: -20rpx;
+}
+
+.empty-tip {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 底部添加按钮 */
+.add-address-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 30rpx;
+  background-color: #fff;
+  border-top: 1rpx solid #eee;
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.1);
+}
+
+.add-address-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  background-color: #0C34BA;
+  color: #fff;
+  border-radius: 8rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.add-address-btn::after {
+  border: none;
+}
+

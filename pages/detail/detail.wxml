@@ -1,0 +1,68 @@
+<view class="detail-container">
+  <!-- 加载中提示 -->
+  <view class="loading-wrap" wx:if="{{isLoading}}">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 错误提示 -->
+  <view class="error-wrap" wx:if="{{errorMsg}}">
+    <text>{{errorMsg}}</text>
+    <button bindtap="onLoad" style="margin-top:10px;">重新加载</button>
+  </view>
+
+  <!-- 商品内容（仅当有数据时显示） -->
+  <view wx:if="{{!isLoading && !errorMsg && detailData.name}}">
+    <!-- 商品图片 -->
+    <view class="goods-img-wrap">
+      <image 
+        class="goods-img" 
+        src="{{detailData.largeImg || '/images/home.png'}}"
+        mode="widthFix"
+        lazy-load
+      ></image>
+    </view>
+
+    <!-- 商品名称&价格 -->
+    <view class="goods-info">
+      <view class="goods-name-group">
+        <view class="goods-name">
+          <text class="g-tag" wx:if="{{detailData.flag}}">{{detailData.flag}}</text>
+          <text class="g-name">{{detailData.name}}</text>
+        </view>
+        <text class="goods-en-name">{{detailData.enname || ''}}</text>
+      </view>
+      <text class="goods-price">{{detailData.price || '¥0.00'}}</text>
+    </view>
+
+    <!-- 数量选择 -->
+    <view class="stepper-wrap">
+      <text class="stepper-label">选择数量</text>
+      <view class="stepper" bindtap="handleStepper">
+        <image class="stepper-icon reduce" src="../../images/reduce.png" data-type="reduce"></image>
+        <text class="stepper-value">{{count}}</text>
+        <image class="stepper-icon add" src="../../images/add.png" data-type="add"></image>
+      </view>
+    </view>
+
+    <!-- 商品描述 -->
+    <view class="desc-section">
+      <view class="desc-title">商品描述</view>
+      <view class="desc-content" wx:for="{{detailData.descData}}" wx:key="index">
+        {{index + 1}}. {{item}}
+      </view>
+    </view>
+
+    <!-- 底部操作栏 -->
+    <view class="bottom-bar">
+      <view class="bar-btn" bindtap="goToShopbag">
+        <image src="../../images/shopbag.png" class="bar-icon"></image>
+        <text class="bar-text">购物袋</text>
+      </view>
+      <view class="bar-btn" bindtap="toggleFavorite">
+        <image src="../../images/shopbag.png" class="bar-icon {{isFavorite ? 'favorite-active' : ''}}"></image>
+        <text class="bar-text">{{isFavorite ? '已收藏' : '收藏'}}</text>
+      </view>
+      <view class="add-cart-btn" bindtap="addToCart">加入购物袋</view>
+    </view>
+  </view>
+</view>
