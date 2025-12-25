@@ -52,8 +52,8 @@
       {
         "pagePath": "pages/index/index",
         "text": "ai助手",
-        "iconPath": "./images/my.png",
-        "selectedIconPath": "./images/my_active.png"
+        "iconPath": "./images/ai.png",
+        "selectedIconPath": "./images/ai_active.png"
       },
       {
         "pagePath": "pages/my/my",
