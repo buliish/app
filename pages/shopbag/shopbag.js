@@ -22,7 +22,7 @@ Page({
   loadCart() {
     const cart = app.globalData.cart || []
     
-    // 获取当前购物车中所有商品的pid（统一转为字符串）
+    // 获取当前购物车所有商品的pid（统一转为字符串）
     const cartPids = cart.map(item => String(item.pid))
     
     // 过滤selectedItems，只保留购物车中存在的商品（统一转为字符串）

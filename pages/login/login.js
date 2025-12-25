@@ -2,7 +2,7 @@ import { userLogin } from '../../api/api' // 引入登录接口
 
 Page({
   /**
-   * 页面的初始数据
+   * 页面初始数据
    */
   data: {
     showPassword: false,  // 密码是否显示明文

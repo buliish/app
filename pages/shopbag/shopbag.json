@@ -1,3 +1,6 @@
 {
-  "usingComponents": {}
+  "usingComponents": {
+    "Product": "../../components/Product/Product"
+  },
+  "navigationBarTitleText": "购物袋"
 }
