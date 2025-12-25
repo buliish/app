@@ -13,6 +13,21 @@
             </view>
           </view>
         </view>
+        <!-- 推荐商品 -->
+        <view wx:if="{{item.sender === 'bot' && item.recommendedProducts && item.recommendedProducts.length}}" class="product-recommend-wrapper">
+          <view class="recommend-label">为您推荐：</view>
+          <scroll-view class="product-recommend-list" scroll-x>
+            <view class="product-recommend-item" wx:for="{{item.recommendedProducts}}" wx:key="pid" bindtap="onProductTap" data-pid="{{item.pid}}">
+              <image class="product-recommend-img" src="{{item.smallImg || item.largeImg}}" mode="aspectFill"></image>
+              <view class="product-recommend-info">
+                <view class="product-recommend-name">{{item.name}}</view>
+                <view class="product-recommend-price">¥{{item.price}}</view>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+        
+        <!-- 推荐问题 -->
         <view wx:if="{{item.sender === 'bot' && item.suggestions && item.suggestions.length}}" class="suggestion-wrapper">
           <view class="suggestion-label">你可能还想问：</view>
           <view class="suggestion-row">

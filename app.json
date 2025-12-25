@@ -17,7 +17,8 @@
     "pages/getCoupon/getCoupon",
     "pages/payment/payment",
     "pages/payModal/payModal",
-    "pages/selectCoupon/selectCoupon"
+    "pages/selectCoupon/selectCoupon",
+    "pages/favorites/favorites"
   ],
   "window": {
     "navigationBarTextStyle": "black",

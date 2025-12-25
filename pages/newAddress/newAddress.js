@@ -23,7 +23,9 @@ Page({
   // 加载地址数据（编辑时使用）
   loadAddressData(id) {
     // 从本地存储或全局数据中获取地址信息
-    const addresses = wx.getStorageSync('addresses') || []
+    const app = getApp()
+    const storageKey = app.getUserStorageKey('addresses')
+    const addresses = wx.getStorageSync(storageKey) || []
     const address = addresses.find(addr => addr.id === id)
     
     if (address) {
@@ -137,8 +139,10 @@ Page({
       return
     }
 
-    // 获取地址列表
-    let addresses = wx.getStorageSync('addresses') || []
+    // 获取地址列表（使用用户隔离的key）
+    const app = getApp()
+    const storageKey = app.getUserStorageKey('addresses')
+    let addresses = wx.getStorageSync(storageKey) || []
 
     // 如果设为默认，取消其他地址的默认状态
     if (isDefault) {
@@ -179,7 +183,7 @@ Page({
     }
 
     // 保存到本地存储
-    wx.setStorageSync('addresses', addresses)
+    wx.setStorageSync(storageKey, addresses)
 
     // 延迟返回上一页
     setTimeout(() => {

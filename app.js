@@ -27,7 +27,8 @@ App({
 
   // 初始化购物车（从本地存储读取）
   initCart() {
-    const cart = wx.getStorageSync('cart') || []
+    const storageKey = this.getUserStorageKey('cart')
+    const cart = wx.getStorageSync(storageKey) || []
     this.globalData.cart = cart
   },
 
@@ -89,7 +90,8 @@ App({
 
   // 保存购物车到本地存储
   saveCart() {
-    wx.setStorageSync('cart', this.globalData.cart)
+    const storageKey = this.getUserStorageKey('cart')
+    wx.setStorageSync(storageKey, this.globalData.cart)
   },
 
   // 获取购物车总数量
@@ -104,14 +106,22 @@ App({
 
   // 初始化收藏列表（从本地存储读取）
   initFavorites() {
-    const favorites = wx.getStorageSync('favorites') || []
+    const storageKey = this.getUserStorageKey('favorites')
+    const favorites = wx.getStorageSync(storageKey) || []
     this.globalData.favorites = favorites
   },
 
   // 添加商品到收藏
   addToFavorites(product) {
+    // 确保收藏列表已初始化
+    if (!this.globalData.favorites) {
+      this.initFavorites()
+    }
+    
     const favorites = this.globalData.favorites
-    const existingIndex = favorites.findIndex(item => item.pid === product.pid)
+    // 统一转换为字符串进行比较
+    const productPidStr = String(product.pid)
+    const existingIndex = favorites.findIndex(item => String(item.pid) === productPidStr)
     
     if (existingIndex > -1) {
       // 如果商品已收藏，取消收藏
@@ -136,8 +146,15 @@ App({
 
   // 从收藏移除商品
   removeFromFavorites(pid) {
+    // 确保收藏列表已初始化
+    if (!this.globalData.favorites) {
+      this.initFavorites()
+    }
+    
     const favorites = this.globalData.favorites
-    const index = favorites.findIndex(item => item.pid === pid)
+    // 统一转换为字符串进行比较
+    const pidStr = String(pid)
+    const index = favorites.findIndex(item => String(item.pid) === pidStr)
     if (index > -1) {
       favorites.splice(index, 1)
       this.saveFavorites()
@@ -146,18 +163,31 @@ App({
 
   // 检查商品是否已收藏
   isFavorite(pid) {
-    return this.globalData.favorites.some(item => item.pid === pid)
+    // 确保收藏列表已初始化
+    if (!this.globalData.favorites || this.globalData.favorites.length === 0) {
+      this.initFavorites()
+    }
+    // 统一转换为字符串进行比较，避免类型不匹配
+    const pidStr = String(pid)
+    return this.globalData.favorites.some(item => String(item.pid) === pidStr)
   },
 
   // 保存收藏列表到本地存储
   saveFavorites() {
-    wx.setStorageSync('favorites', this.globalData.favorites)
+    const storageKey = this.getUserStorageKey('favorites')
+    wx.setStorageSync(storageKey, this.globalData.favorites)
   },
 
   // 获取当前用户ID
   getCurrentUserId() {
     const userInfo = this.globalData.userInfo || wx.getStorageSync('userInfo')
     return userInfo ? (userInfo.phone || userInfo.userId || '') : ''
+  },
+
+  // 获取用户相关的存储key（带用户ID）
+  getUserStorageKey(key) {
+    const userId = this.getCurrentUserId()
+    return userId ? `${key}_${userId}` : key
   },
 
   // 获取用户订单（根据用户ID筛选）

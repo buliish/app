@@ -17,12 +17,14 @@ Page({
 
   // 加载可用优惠券
   loadAvailableCoupons() {
-    let coupons = wx.getStorageSync('coupons') || []
+    const app = getApp()
+    const storageKey = app.getUserStorageKey('coupons')
+    let coupons = wx.getStorageSync(storageKey) || []
     
     // 如果没有数据，初始化一些示例数据
     if (coupons.length === 0) {
       coupons = this.getDefaultCoupons()
-      wx.setStorageSync('coupons', coupons)
+      wx.setStorageSync(storageKey, coupons)
     }
 
     // 筛选可用优惠券（不过滤不满足满减条件的，只是标记为不可用）

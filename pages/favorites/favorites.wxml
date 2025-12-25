@@ -1,0 +1,39 @@
+<!--pages/favorites/favorites.wxml-->
+<view class="favorites-container">
+  <!-- 头部标题栏 -->
+  <view class="header-bar">
+    <text class="header-title">我的收藏</text>
+    <text class="clear-all-btn" wx:if="{{favorites.length > 0}}" bindtap="onClearAll">清空</text>
+  </view>
+
+  <!-- 收藏商品列表 -->
+  <scroll-view class="favorites-scroll" scroll-y wx:if="{{!isEmpty}}">
+    <view class="product-list">
+      <view class="product-item" wx:for="{{favorites}}" wx:key="pid" data-pid="{{item.pid}}" bindtap="onProductTap">
+        <!-- 商品图片 -->
+        <image class="product-img" src="{{item.smallImg || item.largeImg}}" mode="aspectFill"></image>
+        
+        <!-- 商品信息 -->
+        <view class="product-info">
+          <view class="product-name">{{item.name}}</view>
+          <view class="product-enname" wx:if="{{item.enname}}">{{item.enname}}</view>
+          <view class="product-price">¥{{item.price}}</view>
+        </view>
+
+        <!-- 删除按钮 -->
+        <view class="delete-btn" catchtap="onDeleteFavorite" data-pid="{{item.pid}}">
+          <text class="delete-icon">×</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{isEmpty}}">
+    <image class="empty-icon" src="../../images/shopbag_bg.png" mode="aspectFit"></image>
+    <button class="go-shopping-btn" bindtap="goShopping">去逛逛</button>
+    <text class="empty-text">暂无收藏商品</text>
+    <text class="empty-tip">快去添加一个吧~</text>
+  </view>
+</view>
+

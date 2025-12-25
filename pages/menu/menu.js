@@ -20,10 +20,12 @@ Page({
     // 搜索相关
     searchValue: '',
     originalProductData: [], // 保存原始商品数据，用于搜索过滤
+    allProducts: [], // 所有分类的商品数据（用于跨分类搜索）
     searchHistory: [], // 搜索历史记录
     showHistory: false, // 是否显示搜索历史
     aiSuggestions: [], // AI智能推荐关键词
-    isLoadingAI: false // AI推荐加载状态
+    isLoadingAI: false, // AI推荐加载状态
+    isSearching: false // 是否正在搜索（跨分类搜索状态）
   },
 
   /**
@@ -38,12 +40,16 @@ Page({
     //获取商品类型
     getType().then(async result => {
       console.log('商品类型 result ==>', result);
+      const typeData = result.data.result
       this.setData({
-        typeData: result.data.result
+        typeData: typeData
       })
 
+      // 加载所有分类的商品数据（用于跨分类搜索）
+      await this.loadAllProducts(typeData)
+
       //获取默认选中的商品类型id
-      let typeId = this.data.typeData[this.data.selectedTypeIndex].typeId;
+      let typeId = typeData[this.data.selectedTypeIndex].typeId;
       console.log('typeId ==> ',typeId);
 
       let data = await getProductByType(typeId);
@@ -62,6 +68,47 @@ Page({
         typeData: []
       });
     })
+  },
+
+  // 加载所有分类的商品数据（用于跨分类搜索）
+  async loadAllProducts(typeData) {
+    try {
+      // 使用传入的typeData，如果没有则使用this.data.typeData
+      const types = typeData || this.data.typeData || []
+      if (types.length === 0) {
+        console.warn('没有分类数据，无法加载所有商品')
+        return
+      }
+
+      const allProducts = []
+      
+      // 遍历所有分类，加载每个分类的商品
+      for (let i = 0; i < types.length; i++) {
+        const type = types[i]
+        try {
+          const data = await getProductByType(type.typeId)
+          if (data && data.data && data.data.result) {
+            // 为每个商品添加所属分类信息
+            const productsWithType = data.data.result.map(product => ({
+              ...product,
+              typeId: type.typeId,
+              typeName: type.type,
+              typeIndex: i // 保存分类索引，方便跳转
+            }))
+            allProducts.push(...productsWithType)
+          }
+        } catch (error) {
+          console.error(`加载分类 ${type.type} 的商品失败:`, error)
+        }
+      }
+      
+      this.setData({
+        allProducts: allProducts
+      })
+      console.log('所有商品加载完成，数量:', allProducts.length)
+    } catch (error) {
+      console.error('加载所有商品失败:', error)
+    }
   },
   
   //切换商品类型
@@ -86,7 +133,8 @@ Page({
       productData: data.data.result,
       originalProductData: data.data.result, // 保存原始数据
       searchValue: '', // 切换类型时清空搜索
-      showHistory: false // 切换类型时隐藏历史记录
+      showHistory: false, // 切换类型时隐藏历史记录
+      isSearching: false // 切换类型时退出搜索状态
     })
   },
 
@@ -124,32 +172,36 @@ Page({
     this.filterProducts(value)
   },
 
-  // 过滤商品
+  // 过滤商品（支持跨分类搜索）
   filterProducts(keyword) {
-    const { originalProductData } = this.data
     if (!keyword || keyword.trim() === '') {
-      // 如果搜索关键词为空，显示所有商品
+      // 如果搜索关键词为空，显示当前分类的所有商品
       this.setData({
-        productData: originalProductData
+        productData: this.data.originalProductData,
+        isSearching: false
       })
       return
     }
 
-    // 过滤商品（根据商品名称和英文名称）
-    const filtered = originalProductData.filter(item => {
+    // 跨分类搜索：在所有商品中搜索
+    const { allProducts } = this.data
+    const searchKey = keyword.toLowerCase()
+    
+    const filtered = allProducts.filter(item => {
       const name = (item.name || '').toLowerCase()
       const enname = (item.enname || '').toLowerCase()
-      const searchKey = keyword.toLowerCase()
-      return name.includes(searchKey) || enname.includes(searchKey)
+      const desc = (item.desc || '').toLowerCase()
+      return name.includes(searchKey) || enname.includes(searchKey) || desc.includes(searchKey)
     })
 
     this.setData({
-      productData: filtered
+      productData: filtered,
+      isSearching: true // 标记为搜索状态
     })
   },
 
-  // 查看商品详情
-  viewDetail(e) {
+  // 查看商品详情（支持从搜索结果跳转到对应分类）
+  async viewDetail(e) {
     let pid = e.currentTarget.dataset.pid;
     if (!pid) {
       wx.showToast({
@@ -158,9 +210,61 @@ Page({
       })
       return
     }
+
+    // 如果是在搜索状态下，需要先切换到对应分类
+    if (this.data.isSearching) {
+      // 从搜索结果中找到该商品
+      const product = this.data.productData.find(item => item.pid === pid)
+      if (product && product.typeIndex !== undefined) {
+        // 切换到商品所属的分类
+        await this.switchToType(product.typeIndex)
+        // 清空搜索状态，显示该分类的所有商品
+        this.setData({
+          searchValue: '',
+          isSearching: false,
+          showHistory: false
+        })
+        // 滚动到该商品位置（可选）
+        // 由于商品列表是动态加载的，这里先跳转到详情页
+      }
+    }
+
+    // 跳转到商品详情页
     wx.navigateTo({
       url: `../detail/detail?pid=${pid}`
     });
+  },
+
+  // 切换到指定分类
+  async switchToType(typeIndex) {
+    if (typeIndex === this.data.selectedTypeIndex) {
+      return // 已经是当前分类，无需切换
+    }
+
+    const { typeData } = this.data
+    if (typeIndex < 0 || typeIndex >= typeData.length) {
+      console.error('分类索引无效:', typeIndex)
+      return
+    }
+
+    // 更新选中的分类索引
+    this.setData({
+      selectedTypeIndex: typeIndex
+    })
+
+    // 加载该分类的商品
+    const typeId = typeData[typeIndex].typeId
+    try {
+      const data = await getProductByType(typeId)
+      if (data && data.data && data.data.result) {
+        this.setData({
+          productData: data.data.result,
+          originalProductData: data.data.result
+        })
+      }
+    } catch (error) {
+      console.error('加载分类商品失败:', error)
+    }
   },
 
   // 点击搜索框
@@ -178,8 +282,10 @@ Page({
   // 加载搜索历史记录
   loadSearchHistory() {
     try {
-      // 从本地存储中读取搜索历史
-      const history = wx.getStorageSync('searchHistory') || []
+      const app = getApp()
+      const storageKey = app.getUserStorageKey('searchHistory')
+      // 从本地存储中读取搜索历史（使用用户隔离的key）
+      const history = wx.getStorageSync(storageKey) || []
       this.setData({
         searchHistory: history
       })
@@ -197,7 +303,9 @@ Page({
       return
     }
     try {
-      let history = wx.getStorageSync('searchHistory') || []
+      const app = getApp()
+      const storageKey = app.getUserStorageKey('searchHistory')
+      let history = wx.getStorageSync(storageKey) || []
       // 移除重复的关键词
       history = history.filter(item => item !== keyword)
       // 将新关键词添加到最前面
@@ -206,8 +314,8 @@ Page({
       if (history.length > 10) {
         history = history.slice(0, 10)
       }
-      // 保存到本地存储
-      wx.setStorageSync('searchHistory', history)
+      // 保存到本地存储（使用用户隔离的key）
+      wx.setStorageSync(storageKey, history)
       // 更新页面数据
       this.setData({
         searchHistory: history
@@ -234,11 +342,13 @@ Page({
   onDeleteHistoryItem(e) {
     const keyword = e.currentTarget.dataset.keyword
     try {
-      let history = wx.getStorageSync('searchHistory') || []
+      const app = getApp()
+      const storageKey = app.getUserStorageKey('searchHistory')
+      let history = wx.getStorageSync(storageKey) || []
       // 移除指定的历史记录
       history = history.filter(item => item !== keyword)
       // 保存到本地存储
-      wx.setStorageSync('searchHistory', history)
+      wx.setStorageSync(storageKey, history)
       // 更新页面数据
       this.setData({
         searchHistory: history
@@ -256,8 +366,10 @@ Page({
       success: (res) => {
         if (res.confirm) {
           try {
+            const app = getApp()
+            const storageKey = app.getUserStorageKey('searchHistory')
             // 清空本地存储
-            wx.removeStorageSync('searchHistory')
+            wx.removeStorageSync(storageKey)
             // 更新页面数据
             this.setData({
               searchHistory: []

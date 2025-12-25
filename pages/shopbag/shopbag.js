@@ -235,6 +235,25 @@ Page({
 
   // 结算
   checkout() {
+    // 检查是否登录
+    const userInfo = wx.getStorageSync('userInfo') || app.globalData.userInfo
+    if (!userInfo) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再进行结算操作',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({
+              url: '../login/login'
+            })
+          }
+        }
+      })
+      return
+    }
+
     const selectedItems = this.data.selectedItems
     const selectedCart = this.data.cartList.filter(item => selectedItems.includes(String(item.pid)))
     
@@ -247,7 +266,9 @@ Page({
     }
 
     // 保存选中的商品ID到本地存储，供付款页面使用
-    wx.setStorageSync('selectedCartItems', selectedItems.map(pid => String(pid)))
+    const app = getApp()
+    const selectedItemsKey = app.getUserStorageKey('selectedCartItems')
+    wx.setStorageSync(selectedItemsKey, selectedItems.map(pid => String(pid)))
     
     // 跳转到付款页面
     wx.navigateTo({

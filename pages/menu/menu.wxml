@@ -4,21 +4,21 @@
 
 <!--搜索功能-->
 <view class="search-box-wrapper">
-  <view class="search-box">
-    <view class="search-ipt-box">
-      <view class="search-icon">
-        <image class="auto-img" src="../../images/home.png" mode="widthFix"/>
-      </view>
-      <input 
-        class="search-ipt" 
-        type="text" 
-        placeholder="请输入商品名称"
-        value="{{searchValue}}"
-        bindinput="onSearchInput"
-        bindconfirm="onSearchConfirm"
+<view class="search-box">
+  <view class="search-ipt-box">
+    <view class="search-icon">
+      <image class="auto-img" src="../../images/home.png" mode="widthFix"/>
+    </view>
+    <input 
+      class="search-ipt" 
+      type="text" 
+      placeholder="请输入商品名称"
+      value="{{searchValue}}"
+      bindinput="onSearchInput"
+      bindconfirm="onSearchConfirm"
         bindfocus="onSearchTap"
-        confirm-type="search"
-      />
+      confirm-type="search"
+    />
     </view>
   </view>
   
@@ -75,8 +75,12 @@
   <!--商品列表-->
   <view class="list">
       <view class="list-box" wx:if="{{!showHistory}}">
+        <!-- 搜索结果：显示分类标签 -->
         <view class="list-item" wx:for="{{productData}}" wx:key="index" bindtap="viewDetail" data-pid="{{item.pid}}">
+          <view class="product-wrapper">
+            <view class="type-tag" wx:if="{{isSearching && item.typeName}}">{{item.typeName}}</view>
           <Product pro-data="{{item}}"></Product>
+          </view>
         </view>
         <!-- 空数据提示 -->
         <view wx:if="{{productData.length === 0}}" class="empty-tip">

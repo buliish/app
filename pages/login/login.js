@@ -101,6 +101,10 @@ Page({
         const app = getApp();
         app.globalData.userInfo = userInfo;
         
+        // 重新初始化用户数据（购物车、收藏等）
+        app.initCart();
+        app.initFavorites();
+        
         // 延迟跳转首页
         setTimeout(() => {
           wx.switchTab({

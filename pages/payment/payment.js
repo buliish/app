@@ -24,6 +24,29 @@ Page({
   },
 
   onLoad(options) {
+    // 检查是否登录
+    const userInfo = wx.getStorageSync('userInfo') || app.globalData.userInfo
+    if (!userInfo) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再进行支付操作',
+        confirmText: '去登录',
+        cancelText: '取消',
+        showCancel: true,
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({
+              url: '../login/login'
+            })
+          } else {
+            // 取消后返回上一页
+            wx.navigateBack()
+          }
+        }
+      })
+      return
+    }
+
     if (options.orderId) {
       // 从订单支付进入
       this.setData({
@@ -52,7 +75,9 @@ Page({
   // 加载购物车数据
   loadCartData() {
     const cart = app.globalData.cart || []
-    const selectedPids = wx.getStorageSync('selectedCartItems') || []
+    // 获取用户隔离的存储key（文件顶部已声明app，直接使用）
+    const selectedItemsKey = app.getUserStorageKey('selectedCartItems')
+    const selectedPids = wx.getStorageSync(selectedItemsKey) || []
     
     // 获取选中的商品
     const selectedProducts = cart.filter(item => 
@@ -75,8 +100,9 @@ Page({
       .reduce((total, item) => total + (item.price * item.count), 0)
       .toFixed(2)
 
-    // 获取收货地址
-    const addresses = wx.getStorageSync('addresses') || []
+    // 获取收货地址（使用文件顶部已声明的app）
+    const addressesKey = app.getUserStorageKey('addresses')
+    const addresses = wx.getStorageSync(addressesKey) || []
     const defaultAddress = addresses.find(addr => addr.isDefault) || addresses[0]
 
     // 计算优惠后的价格

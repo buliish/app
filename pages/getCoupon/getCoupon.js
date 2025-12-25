@@ -40,15 +40,26 @@ Page({
 
   // 检查并重置每日数据
   checkAndResetDailyData() {
+    const app = getApp()
+    const userId = app.getCurrentUserId()
+    if (!userId) {
+      this.setData({
+        currentDate: this.getTodayDateString()
+      })
+      return
+    }
+
     const today = this.getTodayDateString()
-    const lastDate = wx.getStorageSync('couponLastDate') || ''
+    const lastDateKey = app.getUserStorageKey('couponLastDate')
+    const lastDate = wx.getStorageSync(lastDateKey) || ''
     
     // 如果是新的一天，重置领取记录
     if (lastDate !== today) {
       // 清除昨天的领取记录
-      wx.removeStorageSync('dailyCouponReceived')
+      const dailyReceivedKey = app.getUserStorageKey('dailyCouponReceived')
+      wx.removeStorageSync(dailyReceivedKey)
       // 更新日期
-      wx.setStorageSync('couponLastDate', today)
+      wx.setStorageSync(lastDateKey, today)
     }
     
     this.setData({
@@ -94,8 +105,19 @@ Page({
 
   // 加载可领取的优惠券
   loadAvailableCoupons() {
+    const app = getApp()
+    const userId = app.getCurrentUserId()
+    if (!userId) {
+      this.setData({
+        availableCoupons: [],
+        todayReceivedIds: []
+      })
+      return
+    }
+
     // 获取今天已领取的优惠券ID（从每日记录中获取）
-    const dailyReceived = wx.getStorageSync('dailyCouponReceived') || []
+    const dailyReceivedKey = app.getUserStorageKey('dailyCouponReceived')
+    const dailyReceived = wx.getStorageSync(dailyReceivedKey) || []
     const todayReceivedIds = dailyReceived.map(item => item.couponId)
     
     this.setData({
@@ -223,18 +245,21 @@ Page({
     }
 
     // 保存到优惠券列表（用于在优惠券页面显示）
-    let coupons = wx.getStorageSync('coupons') || []
+    const app = getApp()
+    const couponsKey = app.getUserStorageKey('coupons')
+    let coupons = wx.getStorageSync(couponsKey) || []
     coupons.push(newCoupon)
-    wx.setStorageSync('coupons', coupons)
+    wx.setStorageSync(couponsKey, coupons)
 
     // 记录今天已领取的优惠券（用于每日重置）
-    const dailyReceived = wx.getStorageSync('dailyCouponReceived') || []
+    const dailyReceivedKey = app.getUserStorageKey('dailyCouponReceived')
+    const dailyReceived = wx.getStorageSync(dailyReceivedKey) || []
     dailyReceived.push({
       couponId: coupon.id,
       receiveTime: now,
       date: this.getTodayDateString()
     })
-    wx.setStorageSync('dailyCouponReceived', dailyReceived)
+    wx.setStorageSync(dailyReceivedKey, dailyReceived)
 
     wx.showToast({
       title: '领取成功',

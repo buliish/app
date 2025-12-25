@@ -1,5 +1,7 @@
 // index.js1
 const { callCozeAPI } = require('../../utils/coze.js');
+// 引入商品API
+import { getProductByFlag, getType, getProductByType } from '../../api/api.js';
 
 Page({
   data: {
@@ -12,17 +14,69 @@ Page({
         sender: 'bot',
         text: '您好！我是能通过图片帮您识别商品智能助手。',
         suggestions: [],
+        recommendedProducts: [], // 推荐商品列表
       },
     ],
     scrollToView: 'msg-m-hello',
     isLoading: false, // 是否正在加载 AI 回复
     userId: '', // 用户唯一标识
     pendingImages: [], // 待发送的图片列表
+    allProducts: [], // 所有商品数据（用于推荐）
   },
 
   onLoad() {
     // 获取用户唯一标识（优先使用 openid，否则生成临时 ID）
     this.getUserId();
+    // 加载商品数据用于推荐
+    this.loadAllProducts();
+  },
+
+  // 加载所有商品数据（用于AI推荐）
+  async loadAllProducts() {
+    try {
+      // 获取所有类型的商品
+      const typeResult = await getType();
+      if (typeResult && typeResult.data && typeResult.data.result) {
+        const types = typeResult.data.result;
+        let allProducts = [];
+        
+        // 遍历所有类型，获取商品
+        for (const type of types) {
+          try {
+            const productResult = await getProductByType(type.typeId);
+            if (productResult && productResult.data && productResult.data.result) {
+              allProducts = allProducts.concat(productResult.data.result);
+            }
+          } catch (err) {
+            console.error(`获取类型${type.typeId}的商品失败:`, err);
+          }
+        }
+        
+        // 同时获取热卖商品
+        try {
+          const flagResult = await getProductByFlag(['热卖', '上新', '特价']);
+          if (flagResult && flagResult.data && flagResult.data.result) {
+            // 合并商品，去重
+            const flagProducts = flagResult.data.result;
+            flagProducts.forEach(product => {
+              if (!allProducts.find(p => p.pid === product.pid)) {
+                allProducts.push(product);
+              }
+            });
+          }
+        } catch (err) {
+          console.error('获取热卖商品失败:', err);
+        }
+        
+        this.setData({
+          allProducts: allProducts
+        });
+        console.log('已加载商品数据，共', allProducts.length, '个商品');
+      }
+    } catch (error) {
+      console.error('加载商品数据失败:', error);
+      // 失败不影响使用，只是无法推荐商品
+    }
   },
 
   getUserId() {
@@ -121,8 +175,15 @@ Page({
         this.appendToBotMessage(botMsgId, delta);
       });
 
-      // 4. 完成后补齐内容和跟进问题
-      this.finalizeBotMessage(botMsgId, result.content, result.followUpQuestions || []);
+      // 4. 完成后补齐内容和跟进问题，并推荐商品
+      // 异步获取推荐商品（不阻塞UI）
+      this.getRecommendedProducts(result.content).then(recommendedProducts => {
+        this.finalizeBotMessage(botMsgId, result.content, result.followUpQuestions || [], recommendedProducts);
+      }).catch(err => {
+        console.error('获取推荐商品失败:', err);
+        // 即使推荐失败，也要完成消息
+        this.finalizeBotMessage(botMsgId, result.content, result.followUpQuestions || [], []);
+      });
       this.setData({ isLoading: false });
     } catch (error) {
       console.error('调用 Coze API 失败:', error);
@@ -385,8 +446,8 @@ Page({
     });
   },
 
-  // 流式结束后，补齐最终内容和跟进问题
-  finalizeBotMessage(botMsgId, fullText, followUpQuestions) {
+  // 流式结束后，补齐最终内容和跟进问题，并添加商品推荐
+  finalizeBotMessage(botMsgId, fullText, followUpQuestions, recommendedProducts = []) {
     const messages = [...this.data.messages];
     const idx = messages.findIndex((m) => m.id === botMsgId);
     if (idx === -1) return;
@@ -402,9 +463,176 @@ Page({
       }));
     }
 
+    // 添加推荐商品
+    if (Array.isArray(recommendedProducts) && recommendedProducts.length > 0) {
+      messages[idx].recommendedProducts = recommendedProducts;
+    }
+
     this.setData({
       messages,
       scrollToView: `msg-${botMsgId}`,
+    });
+  },
+
+  // 根据AI回答内容推荐商品
+  async getRecommendedProducts(aiContent) {
+    if (!aiContent || !this.data.allProducts || this.data.allProducts.length === 0) {
+      return [];
+    }
+
+    try {
+      // 提取AI回答中的关键词（商品名称相关）
+      const keywords = this.extractKeywords(aiContent);
+      if (keywords.length === 0) {
+        return [];
+      }
+
+      // 根据关键词匹配商品
+      const matchedProducts = this.matchProducts(keywords);
+      
+      // 返回最多6个推荐商品
+      return matchedProducts.slice(0, 6);
+    } catch (error) {
+      console.error('推荐商品失败:', error);
+      return [];
+    }
+  },
+
+  // 从AI回答中提取关键词
+  extractKeywords(content) {
+    if (!content) return [];
+    
+    // 常见的咖啡、饮品相关关键词（按优先级排序）
+    const commonKeywords = [
+      '拿铁', '美式', '卡布奇诺', '摩卡', '焦糖玛奇朵', 
+      '拿铁咖啡', '美式咖啡', '卡布奇诺咖啡', '摩卡咖啡', '焦糖玛奇朵咖啡',
+      '咖啡', '奶茶', '果汁', '茶', '小食', '蛋糕', '面包',
+      '三明治', '沙拉', '甜品', '冰淇淋', '热饮', '冷饮', '饮品'
+    ];
+    
+    const keywords = [];
+    const contentLower = content.toLowerCase();
+    
+    // 检查是否包含常见关键词（避免重复）
+    const foundKeywords = new Set();
+    commonKeywords.forEach(keyword => {
+      const keywordLower = keyword.toLowerCase();
+      if (content.includes(keyword) || contentLower.includes(keywordLower)) {
+        // 避免添加重复的关键词
+        if (!foundKeywords.has(keywordLower)) {
+          keywords.push(keyword);
+          foundKeywords.add(keywordLower);
+        }
+      }
+    });
+    
+    // 提取商品名称（如果AI回答中提到了商品名称）
+    // 匹配模式：推荐/介绍/有/可以/试试 + 商品名 + 咖啡/饮品/小食等
+    const productNamePatterns = [
+      /(?:推荐|介绍|有|可以|试试|建议)(.{2,10})(?:咖啡|饮品|小食|蛋糕|面包|奶茶|果汁)/g,
+      /(?:想要|需要|来一杯|来一份)(.{2,10})(?:咖啡|饮品|小食|蛋糕|面包)/g,
+      /(.{2,8})(?:怎么样|如何|好不好|推荐)/g
+    ];
+    
+    productNamePatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(content)) !== null) {
+        const productName = match[1].trim();
+        if (productName && productName.length >= 2 && productName.length <= 10) {
+          const nameLower = productName.toLowerCase();
+          if (!foundKeywords.has(nameLower)) {
+            keywords.push(productName);
+            foundKeywords.add(nameLower);
+          }
+        }
+      }
+    });
+    
+    return keywords;
+  },
+
+  // 根据关键词匹配商品
+  matchProducts(keywords) {
+    if (!keywords || keywords.length === 0 || !this.data.allProducts) {
+      return [];
+    }
+
+    const matchedProducts = [];
+    const products = this.data.allProducts;
+
+    // 遍历商品，根据关键词匹配
+    products.forEach(product => {
+      const productName = (product.name || '').toLowerCase();
+      const productEnName = (product.enname || '').toLowerCase();
+      const productDesc = (product.desc || '').toLowerCase();
+      const productFlag = (product.flag || '').toLowerCase();
+      
+      // 计算匹配度
+      let matchScore = 0;
+      keywords.forEach(keyword => {
+        const keywordLower = keyword.toLowerCase();
+        
+        // 商品名称完全匹配（最高优先级）
+        if (productName === keywordLower || productName.includes(keywordLower)) {
+          matchScore += 15;
+        }
+        // 商品英文名称匹配
+        else if (productEnName === keywordLower || productEnName.includes(keywordLower)) {
+          matchScore += 12;
+        }
+        // 商品名称包含关键词（部分匹配）
+        else if (keywordLower.length >= 2 && 
+                 (productName.includes(keywordLower.substring(0, 2)) || 
+                  productEnName.includes(keywordLower.substring(0, 2)))) {
+          matchScore += 8;
+        }
+        // 商品标志匹配（如"热卖"、"上新"）
+        else if (productFlag.includes(keywordLower)) {
+          matchScore += 6;
+        }
+        // 描述中包含关键词
+        else if (productDesc.includes(keywordLower)) {
+          matchScore += 4;
+        }
+      });
+
+      if (matchScore > 0) {
+        matchedProducts.push({
+          ...product,
+          matchScore: matchScore
+        });
+      }
+    });
+
+    // 按匹配度排序，如果匹配度相同，优先显示热卖商品
+    matchedProducts.sort((a, b) => {
+      if (b.matchScore !== a.matchScore) {
+        return b.matchScore - a.matchScore;
+      }
+      // 匹配度相同时，优先显示热卖商品
+      const aIsHot = (a.flag || '').includes('热卖');
+      const bIsHot = (b.flag || '').includes('热卖');
+      if (aIsHot && !bIsHot) return -1;
+      if (!aIsHot && bIsHot) return 1;
+      return 0;
+    });
+    
+    return matchedProducts;
+  },
+
+  // 点击推荐商品，跳转到详情页
+  onProductTap(e) {
+    const pid = e.currentTarget.dataset.pid;
+    if (!pid) {
+      wx.showToast({
+        title: '商品信息错误',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    wx.navigateTo({
+      url: `../detail/detail?pid=${pid}`
     });
   },
 
@@ -448,13 +676,14 @@ Page({
     this.setData({ inputValue: question }, () => this.onSend());
   },
 
-  createMessage(sender, text, suggestions = [], images = []) {
+  createMessage(sender, text, suggestions = [], images = [], recommendedProducts = []) {
     return {
       id: `${sender}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       sender,
       text,
       suggestions,
       images,
+      recommendedProducts, // 推荐商品列表
     };
   },
 

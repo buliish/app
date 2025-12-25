@@ -29,7 +29,9 @@ Page({
 
   // 加载地址列表
   loadAddressList() {
-    const addresses = wx.getStorageSync('addresses') || []
+    const app = getApp()
+    const storageKey = app.getUserStorageKey('addresses')
+    const addresses = wx.getStorageSync(storageKey) || []
     // 默认地址排在前面
     const sortedAddresses = addresses.sort((a, b) => {
       if (a.isDefault && !b.isDefault) return -1
@@ -119,9 +121,11 @@ Page({
       content: '确定要删除该地址吗？',
       success: (res) => {
         if (res.confirm) {
-          let addresses = wx.getStorageSync('addresses') || []
+          const app = getApp()
+          const storageKey = app.getUserStorageKey('addresses')
+          let addresses = wx.getStorageSync(storageKey) || []
           addresses = addresses.filter(addr => addr.id !== id)
-          wx.setStorageSync('addresses', addresses)
+          wx.setStorageSync(storageKey, addresses)
           
           this.loadAddressList()
           wx.showToast({

@@ -20,12 +20,16 @@ Page({
 
   // 加载优惠券列表
   loadCoupons() {
-    let coupons = wx.getStorageSync('coupons') || []
+    const app = getApp()
+    const storageKey = app.getUserStorageKey('coupons')
+    let coupons = wx.getStorageSync(storageKey) || []
     
     // 如果没数据，初始化一些示例数据
     if (coupons.length === 0) {
       coupons = this.getDefaultCoupons()
-      wx.setStorageSync('coupons', coupons)
+      const app = getApp()
+      const storageKey = app.getUserStorageKey('coupons')
+      wx.setStorageSync(storageKey, coupons)
     }
 
     // 根据标签筛选

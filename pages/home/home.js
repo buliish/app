@@ -219,11 +219,13 @@ Page({
   onDeleteHistoryItem(e) {
     const keyword = e.currentTarget.dataset.keyword
     try {
-      let history = wx.getStorageSync('searchHistory') || []
+      const app = getApp()
+      const storageKey = app.getUserStorageKey('searchHistory')
+      let history = wx.getStorageSync(storageKey) || []
       // 移除指定的历史记录
       history = history.filter(item => item !== keyword)
       // 保存到本地存储
-      wx.setStorageSync('searchHistory', history)
+      wx.setStorageSync(storageKey, history)
       // 更新页面数据
       this.setData({
         searchHistory: history
@@ -241,8 +243,10 @@ Page({
       success: (res) => {
         if (res.confirm) {
           try {
+            const app = getApp()
+            const storageKey = app.getUserStorageKey('searchHistory')
             // 清空本地存储
-            wx.removeStorageSync('searchHistory')
+            wx.removeStorageSync(storageKey)
             // 更新页面数据
             this.setData({
               searchHistory: []

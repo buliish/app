@@ -39,8 +39,9 @@ Page({
       // 4. 处理商品描述（兼容desc字段为空/不存在的情况）
       result.descData = result.desc ? result.desc.trim().split('\n') : [];
 
-      // 5. 检查是否已收藏
+      // 5. 检查是否已收藏（先初始化收藏列表）
       const app = getApp()
+      app.initFavorites() // 确保收藏列表已加载
       const isFavorite = app.isFavorite(result.pid)
 
       // 6. 赋值渲染（确保字段名正确）
@@ -57,6 +58,18 @@ Page({
         isLoading: false,
         errorMsg: err.message || '获取商品详情失败，请重试'
       });
+    }
+  },
+
+  onShow() {
+    // 每次显示页面时刷新收藏状态（从收藏页返回时）
+    if (this.data.pid) {
+      const app = getApp()
+      app.initFavorites() // 重新加载收藏列表
+      const isFavorite = app.isFavorite(this.data.pid)
+      this.setData({
+        isFavorite: isFavorite
+      })
     }
   },
 
@@ -108,6 +121,25 @@ Page({
       wx.showToast({
         title: '商品信息不完整',
         icon: 'none'
+      })
+      return
+    }
+
+    // 检查是否登录
+    const userInfo = wx.getStorageSync('userInfo') || app.globalData.userInfo
+    if (!userInfo) {
+      wx.showModal({
+        title: '提示',
+        content: '请先登录后再进行收藏操作',
+        confirmText: '去登录',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({
+              url: '../login/login'
+            })
+          }
+        }
       })
       return
     }

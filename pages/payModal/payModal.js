@@ -103,16 +103,26 @@ Page({
 
   // 创建订单并支付
   createOrderAndPay() {
+    // 确保app可用
+    const appInstance = app || getApp()
+    if (!appInstance) {
+      wx.showToast({
+        title: '系统错误，请重试',
+        icon: 'none'
+      })
+      return
+    }
+
     const products = this.data.products
     const address = this.data.address
 
     const orderNo = `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`
     
-    const paymentData = app.globalData.paymentData || {}
+    const paymentData = appInstance.globalData.paymentData || {}
     const order = {
       id: `order_${Date.now()}`,
       orderNo: orderNo,
-      userId: app.getCurrentUserId(), // 添加用户ID
+      userId: appInstance.getCurrentUserId(), // 添加用户ID
       products: products.map(item => ({
         pid: item.pid,
         name: item.name,
@@ -137,27 +147,29 @@ Page({
       updateTime: Date.now()
     }
     
-    app.saveOrder(order)
+    appInstance.saveOrder(order)
 
     // 如果使用了优惠券，标记为已使用
     if (paymentData.coupon) {
-      let coupons = wx.getStorageSync('coupons') || []
+      const couponsKey = appInstance.getUserStorageKey('coupons')
+      let coupons = wx.getStorageSync(couponsKey) || []
       const couponIndex = coupons.findIndex(c => c.id === paymentData.coupon.id)
       if (couponIndex > -1) {
         coupons[couponIndex].status = 'used'
-        wx.setStorageSync('coupons', coupons)
+        wx.setStorageSync(couponsKey, coupons)
       }
     }
 
     // 从购物车中移除已结算的商品
-    const selectedPids = wx.getStorageSync('selectedCartItems') || []
+    const selectedItemsKey = appInstance.getUserStorageKey('selectedCartItems')
+    const selectedPids = wx.getStorageSync(selectedItemsKey) || []
     selectedPids.forEach(pid => {
-      app.removeFromCart(pid)
+      appInstance.removeFromCart(pid)
     })
-    wx.removeStorageSync('selectedCartItems')
+    wx.removeStorageSync(selectedItemsKey)
 
     // 清除全局支付数据
-    app.globalData.paymentData = null
+    appInstance.globalData.paymentData = null
 
     wx.showToast({
       title: '支付成功',
@@ -174,11 +186,20 @@ Page({
 
   // 支付订单
   payOrder() {
+    // 确保app可用
+    const appInstance = app || getApp()
+    if (!appInstance) {
+      wx.showToast({
+        title: '系统错误，请重试',
+        icon: 'none'
+      })
+      return
+    }
+
     const orderId = this.data.orderId
-    const app = getApp()
     
     // 获取订单信息
-    const orders = app.getUserOrders()
+    const orders = appInstance.getUserOrders()
     const order = orders.find(o => o.id === orderId)
     
     if (order) {
@@ -197,10 +218,10 @@ Page({
         }
       }
       
-      app.updateOrder(orderId, updates)
+      appInstance.updateOrder(orderId, updates)
       
       // 清除全局支付数据
-      app.globalData.paymentData = null
+      appInstance.globalData.paymentData = null
       
       wx.showToast({
         title: '支付成功',
@@ -218,13 +239,18 @@ Page({
 
   // 取消支付（退出支付页面）
   cancelPay() {
+    // 确保app可用
+    const appInstance = app || getApp()
+    
     if (this.data.source === 'cart') {
       // 从购物车结算，创建待付款订单
       this.createPendingOrder()
     }
     
     // 清除全局支付数据
-    app.globalData.paymentData = null
+    if (appInstance) {
+      appInstance.globalData.paymentData = null
+    }
     
     // 返回上一页
     wx.navigateBack()
@@ -232,6 +258,16 @@ Page({
 
   // 创建待付款订单
   createPendingOrder() {
+    // 确保app可用
+    const appInstance = app || getApp()
+    if (!appInstance) {
+      wx.showToast({
+        title: '系统错误，请重试',
+        icon: 'none'
+      })
+      return
+    }
+
     const products = this.data.products
     const address = this.data.address
 
@@ -246,11 +282,11 @@ Page({
     const orders = wx.getStorageSync('orders') || []
     const orderNo = `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`
     
-    const paymentData = app.globalData.paymentData || {}
+    const paymentData = appInstance.globalData.paymentData || {}
     const order = {
       id: `order_${Date.now()}`,
       orderNo: orderNo,
-      userId: app.getCurrentUserId(), // 添加用户ID
+      userId: appInstance.getCurrentUserId(), // 添加用户ID
       products: products.map(item => ({
         pid: item.pid,
         name: item.name,
@@ -275,17 +311,18 @@ Page({
       updateTime: Date.now()
     }
     
-    app.saveOrder(order)
+    appInstance.saveOrder(order)
 
     // 从购物车中移除已结算的商品
-    const selectedPids = wx.getStorageSync('selectedCartItems') || []
+    const selectedItemsKey = appInstance.getUserStorageKey('selectedCartItems')
+    const selectedPids = wx.getStorageSync(selectedItemsKey) || []
     selectedPids.forEach(pid => {
-      app.removeFromCart(pid)
+      appInstance.removeFromCart(pid)
     })
-    wx.removeStorageSync('selectedCartItems')
+    wx.removeStorageSync(selectedItemsKey)
 
     // 清除全局支付数据
-    app.globalData.paymentData = null
+    appInstance.globalData.paymentData = null
 
     wx.showToast({
       title: '订单已创建',

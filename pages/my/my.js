@@ -82,6 +82,13 @@ Page({
     })
   },
 
+  // 跳转到我的收藏
+  goToFavorites() {
+    wx.navigateTo({
+      url: '../favorites/favorites'
+    })
+  },
+
   // 退出登录
   logout() {
     wx.showModal({
@@ -89,8 +96,12 @@ Page({
       content: '确定要退出登录吗？',
       success: (res) => {
         if (res.confirm) {
+          // 清空用户信息
           wx.removeStorageSync('userInfo')
           app.globalData.userInfo = null
+          // 清空全局数据
+          app.globalData.cart = []
+          app.globalData.favorites = []
           this.setData({
             userInfo: null
           })
