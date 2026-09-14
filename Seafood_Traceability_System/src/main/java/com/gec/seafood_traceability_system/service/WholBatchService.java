@@ -1,0 +1,26 @@
+package com.gec.seafood_traceability_system.service;
+
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.gec.seafood_traceability_system.pojo.ConfirmVO;
+import com.gec.seafood_traceability_system.pojo.WholBatch;
+
+import java.util.List;
+
+/**
+ * 批发商产品批号业务接口
+ * 状态：1 新建 2 待确认 3 已确认 4 已下架
+ */
+public interface WholBatchService extends IService<WholBatch> {
+
+    List<WholBatch> listByNodeAndStatus(Integer nodeId, Integer status);
+
+    boolean existsBatchNo(String batchNo);
+
+    boolean offline(Integer wholBatchId);
+
+    /** 下游（零售商）进场确认列表 */
+    List<ConfirmVO> listPendingConfirm(Integer wholNodeId, String downName);
+
+    /** 确认下游企业进场（零售商批号 -> 已确认并生成溯源标识码） */
+    boolean confirmDownstream(Integer retaBatchId);
+}

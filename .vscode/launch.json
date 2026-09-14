@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-SeafoodTraceabilitySystemApplication<Seafood_Traceability_System>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.gec.seafood_traceability_system.SeafoodTraceabilitySystemApplication",
+            "projectName": "Seafood_Traceability_System",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
