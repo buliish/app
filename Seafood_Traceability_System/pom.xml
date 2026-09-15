@@ -38,6 +38,12 @@
             <version>3.5.7</version>
         </dependency>
 
+        <!-- 仅引 crypto 模块做 BCrypt 密码哈希，不引 starter，因此不会触发 Spring Security 自动配置 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <!-- MySQL 驱动 -->
         <dependency>
             <groupId>com.mysql</groupId>

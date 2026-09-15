@@ -1,5 +1,6 @@
 package com.gec.seafood_traceability_system.service.impl;
 
+import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.FarmBatch;
 import com.gec.seafood_traceability_system.pojo.FrozBatch;
 import com.gec.seafood_traceability_system.pojo.NodeInfo;
@@ -49,11 +50,27 @@ public class TraceServiceImpl implements TraceService {
         if (reta == null) {
             return null;
         }
-        WholBatch whol = wholBatchService.lambdaQuery().eq(WholBatch::getBatchNo, reta.getUpBatchNo()).one();
+        // 已下架批号不再对外提供溯源（产品的流通凭证已失效）
+        if (reta.getStatus() == null || reta.getStatus() != 3) {
+            throw new BizException("该产品批号已下架，暂不支持溯源查询");
+        }
+
+        // 逐级上溯：除了批号，还限定"上游企业编号"，
+        // 避免不同企业出现同号批号时串链（与 up_node_id 字段的设计语义保持一致）
+        WholBatch whol = wholBatchService.lambdaQuery()
+                .eq(WholBatch::getBatchNo, reta.getUpBatchNo())
+                .eq(reta.getUpNodeId() != null, WholBatch::getNodeId, reta.getUpNodeId())
+                .one();
         FrozBatch froz = whol == null ? null
-                : frozBatchService.lambdaQuery().eq(FrozBatch::getBatchNo, whol.getUpBatchNo()).one();
+                : frozBatchService.lambdaQuery()
+                        .eq(FrozBatch::getBatchNo, whol.getUpBatchNo())
+                        .eq(whol.getUpNodeId() != null, FrozBatch::getNodeId, whol.getUpNodeId())
+                        .one();
         FarmBatch farm = froz == null ? null
-                : farmBatchService.lambdaQuery().eq(FarmBatch::getBatchNo, froz.getUpBatchNo()).one();
+                : farmBatchService.lambdaQuery()
+                        .eq(FarmBatch::getBatchNo, froz.getUpBatchNo())
+                        .eq(froz.getUpNodeId() != null, FarmBatch::getNodeId, froz.getUpNodeId())
+                        .one();
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("traceCode", reta.getTraceCode());

@@ -17,6 +17,14 @@ public interface NodeInfoService extends IService<NodeInfo> {
     /** 更新当前登录企业密码（企业ID取自 token） */
     void updatePwd(String newPwd);
 
+    /**
+     * 按企业编号更新密码。
+     * <p>
+     * 登录时 ThreadLocal 还没有值（登录接口在拦截器白名单里），
+     * 所以"登录成功顺带把明文密码升级为 BCrypt 哈希"这个动作必须走本方法。
+     */
+    void updatePwdById(Integer nodeId, String newPwd);
+
     /** 更新企业联系方式（只更新企业法人、联系电话、地址） */
     void update(NodeInfo nodeInfo);
 

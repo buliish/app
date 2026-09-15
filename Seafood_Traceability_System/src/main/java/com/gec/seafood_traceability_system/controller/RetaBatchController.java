@@ -66,8 +66,16 @@ public class RetaBatchController {
     /** 更新产品批号：sendConfirm=true 时向上游发送确认请求 */
     @PutMapping("/batch")
     public Result update(@RequestBody RetaBatch batch, @RequestParam(required = false) Boolean sendConfirm) {
-        // 归属校验：只能改自己的批号，且已确认/已下架不可再改
-        retaBatchService.requireOwned(batch.getRetaBatchId(), currentNodeId(), 1);
+        // 归属校验：只能改自己的批号
+        RetaBatch exist = retaBatchService.requireOwned(batch.getRetaBatchId(), currentNodeId());
+        // 仅"新建"状态可改。若允许已确认(3)的批号改回待确认(2)，
+        // 会出现"已生成溯源码却回到待确认"的脏状态，且上游会重复收到确认请求
+        if (exist.getStatus() != null && exist.getStatus() == 3) {
+            throw new BizException("批号已确认，溯源标识码 " + exist.getTraceCode() + " 已生效，不可再修改");
+        }
+        if (exist.getStatus() != null && exist.getStatus() == 4) {
+            throw new BizException("批号已下架，不可再修改");
+        }
         batch.setNodeId(currentNodeId());
         batch.setStatus(Boolean.TRUE.equals(sendConfirm) ? 2 : 1);
         batch.setUpdateTime(LocalDateTime.now());

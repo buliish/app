@@ -2,9 +2,11 @@ package com.gec.seafood_traceability_system.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gec.seafood_traceability_system.mapper.RetaBatchMapper;
+import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.RetaBatch;
 import com.gec.seafood_traceability_system.service.RetaBatchService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
@@ -44,29 +46,54 @@ public class RetaBatchServiceImpl extends ServiceImpl<RetaBatchMapper, RetaBatch
         return updateById(batch);
     }
 
+    /**
+     * 确认零售商批号：状态置为已确认，并生成溯源标识码。
+     * <p>
+     * 加了事务，保证"改状态"和"写溯源码"要么都成功、要么都回滚，
+     * 不会出现"状态已确认但溯源码为空"的中间态。
+     */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String confirmBatch(Integer retaBatchId) {
         RetaBatch batch = getById(retaBatchId);
         if (batch == null) {
-            return null;
+            throw new BizException("批号不存在或已被删除");
         }
-        if (!StringUtils.hasText(batch.getTraceCode())) {
-            batch.setTraceCode(genTraceCode());
-            batch.setTraceTime(LocalDateTime.now());
+        if (batch.getStatus() != null && batch.getStatus() == 4) {
+            throw new BizException("已下架批号不能确认");
         }
+        // 幂等：重复确认直接返回已有的溯源码，不再重新生成
+        if (StringUtils.hasText(batch.getTraceCode())) {
+            if (batch.getStatus() == null || batch.getStatus() != 3) {
+                batch.setStatus(3);
+                batch.setUpdateTime(LocalDateTime.now());
+                updateById(batch);
+            }
+            return batch.getTraceCode();
+        }
+
+        batch.setTraceCode(genTraceCode());
+        batch.setTraceTime(LocalDateTime.now());
         batch.setStatus(3);
         batch.setUpdateTime(LocalDateTime.now());
         updateById(batch);
         return batch.getTraceCode();
     }
 
-    /** 溯源标识码：SHZ + 日期 + 6 位随机数，保证唯一 */
+    /**
+     * 溯源标识码：SHZ + 日期 + 6 位随机数。
+     * <p>
+     * 先查重 + 最多重试 3 次；并发下若仍撞车，数据库唯一索引 uk_trace_code 会拦下来，
+     * 由全局异常处理器转成友好提示。
+     */
     private String genTraceCode() {
-        String code;
-        do {
-            code = "SHZ" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        for (int i = 0; i < 3; i++) {
+            String code = "SHZ" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
                     + String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
-        } while (lambdaQuery().eq(RetaBatch::getTraceCode, code).count() > 0);
-        return code;
+            if (lambdaQuery().eq(RetaBatch::getTraceCode, code).count() == 0) {
+                return code;
+            }
+        }
+        throw new BizException("溯源标识码生成冲突，请重试");
     }
 }

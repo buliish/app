@@ -1,6 +1,7 @@
 package com.gec.seafood_traceability_system.controller;
 
 import com.gec.seafood_traceability_system.utils.JwtUtil;
+import com.gec.seafood_traceability_system.utils.PasswordUtil;
 import com.gec.seafood_traceability_system.utils.ThreadLocalUtil;
 
 import org.springframework.util.StringUtils;
@@ -42,7 +43,13 @@ public class NodeController {
         if (n == null) {
             return Result.error("用户不存在");
         }
-        if (n.getPassword().equals(password)) {
+        if (PasswordUtil.matches(password, n.getPassword())) {
+            // 平滑升级：库里还是历史明文时，登录成功即改写为 BCrypt 哈希。
+            // 注意此处必须用 updatePwdById：登录接口在拦截器白名单里，
+            // ThreadLocal 尚未赋值，走 updatePwd() 会拿到 null。
+            if (!PasswordUtil.isHashed(n.getPassword())) {
+                nodeInfoService.updatePwdById(n.getNodeId(), PasswordUtil.encode(password));
+            }
             Map<String, Object> claims = new HashMap<>();
             // 与管理端的 claims.put("role","admin") 对称，供 NodeAuthInterceptor 区分身份
             claims.put("role", "node");
@@ -90,14 +97,14 @@ public class NodeController {
         if (loginNode == null) {
             return Result.error("用户不存在");
         }
-        if (!loginNode.getPassword().equals(oldPwd)) {
+        if (!PasswordUtil.matches(oldPwd, loginNode.getPassword())) {
             return Result.error("原密码错误");
         }
         if (!newPwd.equals(rePwd)) {
             return Result.error("新密码与确认密码不一致");
         }
 
-        nodeInfoService.updatePwd(newPwd);
+        nodeInfoService.updatePwd(PasswordUtil.encode(newPwd));
         return Result.success();
     }
 

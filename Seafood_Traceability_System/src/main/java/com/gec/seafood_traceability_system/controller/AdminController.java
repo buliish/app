@@ -6,11 +6,13 @@ import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.NodeInfo;
 import com.gec.seafood_traceability_system.pojo.Province;
 import com.gec.seafood_traceability_system.pojo.Result;
+import com.gec.seafood_traceability_system.utils.PasswordUtil;
 import com.gec.seafood_traceability_system.service.AdminService;
 import com.gec.seafood_traceability_system.service.NodeInfoService;
 import com.gec.seafood_traceability_system.service.ProvinceService;
 import com.gec.seafood_traceability_system.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -47,8 +49,14 @@ public class AdminController {
         if (admin == null) {
             return Result.error("管理员不存在");
         }
-        if (!admin.getPassword().equals(params.get("password"))) {
+        String rawPwd = params.get("password");
+        if (!PasswordUtil.matches(rawPwd, admin.getPassword())) {
             return Result.error("密码错误");
+        }
+        // 平滑升级：库里还是历史明文时，登录成功即改写为 BCrypt 哈希
+        if (!PasswordUtil.isHashed(admin.getPassword())) {
+            admin.setPassword(PasswordUtil.encode(rawPwd));
+            adminService.updateById(admin);
         }
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", "admin");
@@ -91,6 +99,9 @@ public class AdminController {
         if (node.getRegDate() == null) {
             node.setRegDate(LocalDate.now());
         }
+        // 新建企业若未指定密码则给默认密码，统一以 BCrypt 哈希入库
+        String rawPwd = StringUtils.hasText(node.getPassword()) ? node.getPassword() : "123456";
+        node.setPassword(PasswordUtil.encode(rawPwd));
         nodeInfoService.save(node);
         return Result.success();
     }

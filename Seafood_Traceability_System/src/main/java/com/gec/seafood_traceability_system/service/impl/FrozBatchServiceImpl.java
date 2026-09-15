@@ -14,6 +14,7 @@ import com.gec.seafood_traceability_system.service.NodeInfoService;
 import com.gec.seafood_traceability_system.service.WholBatchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -103,6 +104,7 @@ public class FrozBatchServiceImpl extends ServiceImpl<FrozBatchMapper, FrozBatch
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean confirmDownstream(Integer wholBatchId, Integer frozNodeId) {
         WholBatch exist = wholBatchService.getById(wholBatchId);
         if (exist == null) {

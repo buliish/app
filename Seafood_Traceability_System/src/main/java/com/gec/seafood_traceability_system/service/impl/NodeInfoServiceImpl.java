@@ -28,7 +28,14 @@ public class NodeInfoServiceImpl extends ServiceImpl<NodeInfoMapper, NodeInfo> i
     @Override
     public void updatePwd(String newPwd) {
         Map<String, Object> map = ThreadLocalUtil.get();
-        Integer nodeId = (Integer) map.get("id");
+        if (map == null || map.get("id") == null) {
+            throw new BizException(Result.CODE_UNAUTHORIZED, "登录状态已失效，请重新登录");
+        }
+        updatePwdById((Integer) map.get("id"), newPwd);
+    }
+
+    @Override
+    public void updatePwdById(Integer nodeId, String newPwd) {
         NodeInfo node = new NodeInfo();
         node.setNodeId(nodeId);
         node.setPassword(newPwd);
