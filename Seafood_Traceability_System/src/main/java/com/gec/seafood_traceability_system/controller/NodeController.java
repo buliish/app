@@ -44,6 +44,8 @@ public class NodeController {
         }
         if (n.getPassword().equals(password)) {
             Map<String, Object> claims = new HashMap<>();
+            // 与管理端的 claims.put("role","admin") 对称，供 NodeAuthInterceptor 区分身份
+            claims.put("role", "node");
             claims.put("id", n.getNodeId());
             // 登录编码作为 JWT 的用户名
             claims.put("username", n.getCode());
