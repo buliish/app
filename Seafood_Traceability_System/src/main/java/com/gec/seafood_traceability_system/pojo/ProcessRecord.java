@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @TableName("process_record")
-public class ProcessRecord {
+public class ProcessRecord implements NodeOwned {
 
     @TableId(value = "record_id", type = IdType.AUTO)
     private Integer recordId;

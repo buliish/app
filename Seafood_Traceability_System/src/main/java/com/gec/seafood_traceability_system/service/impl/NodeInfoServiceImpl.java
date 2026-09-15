@@ -3,7 +3,9 @@ package com.gec.seafood_traceability_system.service.impl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gec.seafood_traceability_system.mapper.NodeInfoMapper;
+import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.NodeInfo;
+import com.gec.seafood_traceability_system.pojo.Result;
 import com.gec.seafood_traceability_system.service.NodeInfoService;
 import com.gec.seafood_traceability_system.utils.ThreadLocalUtil;
 import org.springframework.stereotype.Service;
@@ -35,9 +37,17 @@ public class NodeInfoServiceImpl extends ServiceImpl<NodeInfoMapper, NodeInfo> i
 
     @Override
     public void update(NodeInfo nodeInfo) {
+        // 企业编号只认 token 里的，忽略请求体传入的 nodeId，
+        // 否则可以构造 {nodeId: 别人家编号, ...} 修改其他企业的信息
+        Map<String, Object> map = ThreadLocalUtil.get();
+        if (map == null || map.get("id") == null) {
+            throw new BizException(Result.CODE_UNAUTHORIZED, "登录状态已失效，请重新登录");
+        }
+        Integer nodeId = (Integer) map.get("id");
+
         //只允许企业自己维护法人、联系电话与地址（MP 默认忽略 null 字段）
         NodeInfo update = new NodeInfo();
-        update.setNodeId(nodeInfo.getNodeId());
+        update.setNodeId(nodeId);
         update.setCorporation(nodeInfo.getCorporation());
         update.setTelephone(nodeInfo.getTelephone());
         update.setAddress(nodeInfo.getAddress());

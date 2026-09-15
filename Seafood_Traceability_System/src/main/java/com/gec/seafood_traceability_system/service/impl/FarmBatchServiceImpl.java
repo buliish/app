@@ -3,10 +3,12 @@ package com.gec.seafood_traceability_system.service.impl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gec.seafood_traceability_system.mapper.FarmBatchMapper;
+import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.ConfirmVO;
 import com.gec.seafood_traceability_system.pojo.FarmBatch;
 import com.gec.seafood_traceability_system.pojo.FrozBatch;
 import com.gec.seafood_traceability_system.pojo.NodeInfo;
+import com.gec.seafood_traceability_system.pojo.Result;
 import com.gec.seafood_traceability_system.service.FarmBatchService;
 import com.gec.seafood_traceability_system.service.FrozBatchService;
 import com.gec.seafood_traceability_system.service.NodeInfoService;
@@ -103,7 +105,18 @@ public class FarmBatchServiceImpl extends ServiceImpl<FarmBatchMapper, FarmBatch
     }
 
     @Override
-    public boolean confirmDownstream(Integer frozBatchId) {
+    public boolean confirmDownstream(Integer frozBatchId, Integer farmNodeId) {
+        FrozBatch exist = frozBatchService.getById(frozBatchId);
+        if (exist == null) {
+            throw new BizException("下游批号不存在或已被删除");
+        }
+        // 只能确认"以本企业批号为进场批号"的下游批号，防止跨企业误确认
+        if (!farmNodeId.equals(exist.getUpNodeId())) {
+            throw new BizException(Result.CODE_FORBIDDEN, "无权确认其他企业的下游批号");
+        }
+        if (exist.getStatus() == null || exist.getStatus() != 2) {
+            throw new BizException("该批号当前不是待确认状态");
+        }
         FrozBatch batch = new FrozBatch();
         batch.setFrozBatchId(frozBatchId);
         batch.setStatus(3);

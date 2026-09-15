@@ -36,10 +36,10 @@ public class FarmBatchController {
         return Result.success(farmBatchService.listByNodeAndStatus(currentNodeId(), status));
     }
 
-    /** 批号详情 */
+    /** 批号详情（仅限本企业自己的批号） */
     @GetMapping("/batch/{id}")
     public Result<FarmBatch> detail(@PathVariable Integer id) {
-        return Result.success(farmBatchService.getById(id));
+        return Result.success(farmBatchService.requireOwned(id, currentNodeId()));
     }
 
     /** 批号blur校验：返回 true 表示批号已存在 */
@@ -69,6 +69,8 @@ public class FarmBatchController {
     /** 更新产品批号：publish=true 时同时将状态更新为已发布 */
     @PutMapping("/batch")
     public Result update(@RequestBody FarmBatch batch, @RequestParam(required = false) Boolean publish) {
+        // 归属校验 + 已下架不可修改
+        farmBatchService.requireOwned(batch.getFarmBatchId(), currentNodeId(), 1, 2);
         batch.setNodeId(currentNodeId());
         batch.setStatus(Boolean.TRUE.equals(publish) ? 2 : 1);
         batch.setUpdateTime(LocalDateTime.now());
@@ -76,16 +78,18 @@ public class FarmBatchController {
         return Result.success();
     }
 
-    /** 删除产品批号 */
+    /** 删除产品批号（仅限待发布状态） */
     @DeleteMapping("/batch/{id}")
     public Result delete(@PathVariable Integer id) {
+        farmBatchService.requireOwned(id, currentNodeId(), 1);
         farmBatchService.removeById(id);
         return Result.success();
     }
 
-    /** 下架产品批号 */
+    /** 下架产品批号（仅限已发布状态） */
     @PutMapping("/batch/offline/{id}")
     public Result offline(@PathVariable Integer id) {
+        farmBatchService.requireOwned(id, currentNodeId(), 2);
         farmBatchService.offline(id);
         return Result.success();
     }
@@ -99,6 +103,7 @@ public class FarmBatchController {
     /** 确认下游企业进场 */
     @PutMapping("/confirm/{id}")
     public Result confirm(@PathVariable Integer id) {
-        return farmBatchService.confirmDownstream(id) ? Result.success() : Result.error("确认失败");
+        return farmBatchService.confirmDownstream(id, currentNodeId())
+                ? Result.success() : Result.error("确认失败");
     }
 }

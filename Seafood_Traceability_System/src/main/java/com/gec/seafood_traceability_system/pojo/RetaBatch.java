@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @TableName("reta_batch")
-public class RetaBatch {
+public class RetaBatch implements NodeOwned {
 
     @TableId(value = "reta_batch_id", type = IdType.AUTO)
     private Integer retaBatchId;

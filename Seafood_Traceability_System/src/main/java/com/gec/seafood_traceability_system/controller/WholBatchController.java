@@ -1,6 +1,7 @@
 package com.gec.seafood_traceability_system.controller;
 
 import com.gec.seafood_traceability_system.pojo.ConfirmVO;
+import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.Result;
 import com.gec.seafood_traceability_system.pojo.WholBatch;
 import com.gec.seafood_traceability_system.service.WholBatchService;
@@ -34,8 +35,9 @@ public class WholBatchController {
     }
 
     @GetMapping("/batch/{id}")
+    /** 批号详情（仅限本企业自己的批号） */
     public Result<WholBatch> detail(@PathVariable Integer id) {
-        return Result.success(wholBatchService.getById(id));
+        return Result.success(wholBatchService.requireOwned(id, currentNodeId()));
     }
 
     @GetMapping("/batch/check")
@@ -64,6 +66,8 @@ public class WholBatchController {
     /** 更新产品批号：sendConfirm=true 时向上游发送确认请求 */
     @PutMapping("/batch")
     public Result update(@RequestBody WholBatch batch, @RequestParam(required = false) Boolean sendConfirm) {
+        // 归属校验：只能改自己的批号，且已确认/已下架不可再改
+        wholBatchService.requireOwned(batch.getWholBatchId(), currentNodeId(), 1);
         batch.setNodeId(currentNodeId());
         batch.setStatus(Boolean.TRUE.equals(sendConfirm) ? 2 : 1);
         batch.setUpdateTime(LocalDateTime.now());
@@ -73,12 +77,14 @@ public class WholBatchController {
 
     @DeleteMapping("/batch/{id}")
     public Result delete(@PathVariable Integer id) {
+        wholBatchService.requireOwned(id, currentNodeId(), 1);
         wholBatchService.removeById(id);
         return Result.success();
     }
 
     @PutMapping("/batch/offline/{id}")
     public Result offline(@PathVariable Integer id) {
+        wholBatchService.requireOwned(id, currentNodeId(), 3);
         wholBatchService.offline(id);
         return Result.success();
     }
@@ -92,6 +98,6 @@ public class WholBatchController {
     /** 确认下游企业进场（零售批号置为已确认并生成溯源标识码） */
     @PutMapping("/confirm/{id}")
     public Result confirm(@PathVariable Integer id) {
-        return wholBatchService.confirmDownstream(id) ? Result.success() : Result.error("确认失败");
+        return wholBatchService.confirmDownstream(id, currentNodeId()) ? Result.success() : Result.error("确认失败");
     }
 }

@@ -3,9 +3,11 @@ package com.gec.seafood_traceability_system.service.impl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gec.seafood_traceability_system.mapper.WholBatchMapper;
+import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.ConfirmVO;
 import com.gec.seafood_traceability_system.pojo.NodeInfo;
 import com.gec.seafood_traceability_system.pojo.RetaBatch;
+import com.gec.seafood_traceability_system.pojo.Result;
 import com.gec.seafood_traceability_system.pojo.WholBatch;
 import com.gec.seafood_traceability_system.service.NodeInfoService;
 import com.gec.seafood_traceability_system.service.RetaBatchService;
@@ -101,7 +103,18 @@ public class WholBatchServiceImpl extends ServiceImpl<WholBatchMapper, WholBatch
     }
 
     @Override
-    public boolean confirmDownstream(Integer retaBatchId) {
+    public boolean confirmDownstream(Integer retaBatchId, Integer wholNodeId) {
+        RetaBatch exist = retaBatchService.getById(retaBatchId);
+        if (exist == null) {
+            throw new BizException("下游批号不存在或已被删除");
+        }
+        // 只能确认"以本企业批号为进场批号"的下游批号，防止跨企业误确认
+        if (!wholNodeId.equals(exist.getUpNodeId())) {
+            throw new BizException(Result.CODE_FORBIDDEN, "无权确认其他企业的下游批号");
+        }
+        if (exist.getStatus() == null || exist.getStatus() != 2) {
+            throw new BizException("该批号当前不是待确认状态");
+        }
         //确认零售商进场：批号置为已确认，同时系统生成溯源标识码
         return retaBatchService.confirmBatch(retaBatchId) != null;
     }

@@ -2,6 +2,7 @@ package com.gec.seafood_traceability_system.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gec.seafood_traceability_system.pojo.Admin;
+import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.NodeInfo;
 import com.gec.seafood_traceability_system.pojo.Province;
 import com.gec.seafood_traceability_system.pojo.Result;
@@ -73,7 +74,11 @@ public class AdminController {
     /** 节点企业详情 */
     @GetMapping("/node/{id}")
     public Result<NodeInfo> detail(@PathVariable Integer id) {
-        return Result.success(nodeInfoService.getById(id));
+        NodeInfo node = nodeInfoService.getById(id);
+        if (node == null) {
+            throw new BizException("节点企业不存在或已被删除");
+        }
+        return Result.success(node);
     }
 
     /** 新建节点企业（注册） */
@@ -93,6 +98,9 @@ public class AdminController {
     /** 编辑节点企业（密码由节点端企业自行维护，不在此修改） */
     @PutMapping("/node")
     public Result update(@RequestBody NodeInfo node) {
+        if (node.getNodeId() == null || nodeInfoService.getById(node.getNodeId()) == null) {
+            throw new BizException("节点企业不存在或已被删除");
+        }
         node.setPassword(null);
         nodeInfoService.updateById(node);
         return Result.success();
@@ -101,6 +109,9 @@ public class AdminController {
     /** 删除节点企业 */
     @DeleteMapping("/node/{id}")
     public Result delete(@PathVariable Integer id) {
+        if (nodeInfoService.getById(id) == null) {
+            throw new BizException("节点企业不存在或已被删除");
+        }
         nodeInfoService.removeById(id);
         return Result.success();
     }

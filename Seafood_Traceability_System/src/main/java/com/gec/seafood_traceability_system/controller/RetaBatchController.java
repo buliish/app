@@ -1,5 +1,6 @@
 package com.gec.seafood_traceability_system.controller;
 
+import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.Result;
 import com.gec.seafood_traceability_system.pojo.RetaBatch;
 import com.gec.seafood_traceability_system.service.RetaBatchService;
@@ -34,8 +35,9 @@ public class RetaBatchController {
     }
 
     @GetMapping("/batch/{id}")
+    /** 批号详情（仅限本企业自己的批号） */
     public Result<RetaBatch> detail(@PathVariable Integer id) {
-        return Result.success(retaBatchService.getById(id));
+        return Result.success(retaBatchService.requireOwned(id, currentNodeId()));
     }
 
     @GetMapping("/batch/check")
@@ -64,6 +66,8 @@ public class RetaBatchController {
     /** 更新产品批号：sendConfirm=true 时向上游发送确认请求 */
     @PutMapping("/batch")
     public Result update(@RequestBody RetaBatch batch, @RequestParam(required = false) Boolean sendConfirm) {
+        // 归属校验：只能改自己的批号，且已确认/已下架不可再改
+        retaBatchService.requireOwned(batch.getRetaBatchId(), currentNodeId(), 1);
         batch.setNodeId(currentNodeId());
         batch.setStatus(Boolean.TRUE.equals(sendConfirm) ? 2 : 1);
         batch.setUpdateTime(LocalDateTime.now());
@@ -75,12 +79,14 @@ public class RetaBatchController {
 
     @DeleteMapping("/batch/{id}")
     public Result delete(@PathVariable Integer id) {
+        retaBatchService.requireOwned(id, currentNodeId(), 1);
         retaBatchService.removeById(id);
         return Result.success();
     }
 
     @PutMapping("/batch/offline/{id}")
     public Result offline(@PathVariable Integer id) {
+        retaBatchService.requireOwned(id, currentNodeId(), 3);
         retaBatchService.offline(id);
         return Result.success();
     }

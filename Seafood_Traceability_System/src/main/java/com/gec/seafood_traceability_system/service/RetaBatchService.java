@@ -1,6 +1,5 @@
 package com.gec.seafood_traceability_system.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.gec.seafood_traceability_system.pojo.RetaBatch;
 
 import java.util.List;
@@ -9,7 +8,7 @@ import java.util.List;
  * 零售商产品批号业务接口
  * 状态：1 新建 2 待确认 3 已确认（自动生成溯源标识码） 4 已下架
  */
-public interface RetaBatchService extends IService<RetaBatch> {
+public interface RetaBatchService extends OwnedBatchService<RetaBatch> {
 
     List<RetaBatch> listByNodeAndStatus(Integer nodeId, Integer status);
 

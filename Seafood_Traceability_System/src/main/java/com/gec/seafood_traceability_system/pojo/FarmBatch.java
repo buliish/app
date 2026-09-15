@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @TableName("farm_batch")
-public class FarmBatch {
+public class FarmBatch implements NodeOwned {
 
     @TableId(value = "farm_batch_id", type = IdType.AUTO)
     private Integer farmBatchId;
