@@ -109,17 +109,27 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { traceApi } from '../api/trace'
 import seafoodLogo from '../assets/images/海鲜.png'
 
 const router = useRouter()
+const route = useRoute()
 const traceCode = ref('')
 const data = ref(null)
 const loading = ref(false)
 const searched = ref(false)
+
+// 支持从二维码扫码进入：/trace?code=SHZ...
+onMounted(() => {
+  const code = route.query.code
+  if (code) {
+    traceCode.value = String(code)
+    handleSearch()
+  }
+})
 
 // 各环节企业信息行
 const nodeRows = computed(() => {

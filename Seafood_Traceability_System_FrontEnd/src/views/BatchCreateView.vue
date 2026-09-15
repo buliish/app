@@ -69,6 +69,13 @@
           />
         </el-form-item>
 
+        <!-- 养殖企业专属：养殖阶段（虾苗 / 成虾） -->
+        <el-form-item v-if="nodeType === 1" label="养殖阶段" prop="breedStage">
+          <el-select v-model="form.breedStage" placeholder="请选择养殖阶段">
+            <el-option v-for="s in BREED_STAGE" :key="s" :label="s" :value="s" />
+          </el-select>
+        </el-form-item>
+
         <!-- 加工企业专属：产品类型 -->
         <el-form-item v-if="nodeType === 2" label="产品类型" prop="productType">
           <el-select v-model="form.productType" placeholder="请选择产品类型">
@@ -130,6 +137,7 @@ import {
 } from '../api/batch'
 import { provincesApi, citiesApi, nodesApi, upBatchesApi } from '../api/region'
 import {
+  BREED_STAGE,
   PRODUCT_TYPES,
   TYPE_NAME,
   UPSTREAM_NAME,
@@ -272,7 +280,8 @@ async function handleSubmit() {
         delete payload.upNodeId
         delete payload.upBatchNo
         delete payload.productType
-        delete payload.breedStage
+        // 注意：养殖阶段（breedStage）是养殖企业专属字段，必须保留提交，
+        // 此前这里被误删导致该字段永远存不进库
       } else {
         delete payload.breedStage
         if (nodeType !== 2) delete payload.quarantineNo

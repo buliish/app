@@ -41,18 +41,65 @@
 
       <!-- 加工工序记录（冷冻加工企业） -->
       <template v-if="nodeType === 2">
-        <div class="cell-label process-title">加工工序记录</div>
+        <div class="process-head">
+          <span class="cell-label process-title">加工工序记录</span>
+          <!-- 仅在批号尚未下架时可维护工序 -->
+          <button v-if="canEditProcess" type="button" class="mini-btn add" @click="openProcessDialog">
+            + 新增工序
+          </button>
+        </div>
         <el-empty v-if="records.length === 0" description="暂无工序记录" :image-size="80" />
         <div v-else class="detail-table process-table">
-          <div v-for="(rec, i) in records" :key="rec.id || i" class="cell">
-            <div class="cell-label">{{ rec.step }}（{{ rec.stepTime }}）</div>
+          <div v-for="rec in records" :key="rec.recordId" class="cell process-cell">
+            <div class="cell-label">{{ rec.step }}（{{ formatTime(rec.stepTime) }}）</div>
             <div class="cell-value">
               {{ rec.temperature || '—' }}<template v-if="rec.operator"> · 操作人：{{ rec.operator }}</template><template v-if="rec.remark"> · {{ rec.remark }}</template>
             </div>
+            <button
+              v-if="canEditProcess"
+              type="button"
+              class="mini-btn del"
+              @click="handleDeleteProcess(rec)"
+            >
+              删除
+            </button>
           </div>
         </div>
       </template>
     </main>
+
+    <!-- 新增工序弹窗 -->
+    <el-dialog v-model="processVisible" title="新增加工工序" width="420px" align-center>
+      <el-form :model="processForm" label-width="90px">
+        <el-form-item label="工序" required>
+          <el-select v-model="processForm.step" placeholder="请选择工序" style="width: 100%">
+            <el-option v-for="s in PROCESS_STEPS" :key="s" :label="s" :value="s" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="工序时间">
+          <el-date-picker
+            v-model="processForm.stepTime"
+            type="datetime"
+            placeholder="默认为当前时间"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="工艺参数">
+          <el-input v-model="processForm.temperature" placeholder="如：冷冻温度 -18℃" />
+        </el-form-item>
+        <el-form-item label="操作人">
+          <el-input v-model="processForm.operator" placeholder="请输入操作人姓名" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="processForm.remark" type="textarea" :rows="2" placeholder="选填" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="processVisible = false">取消</el-button>
+        <el-button type="primary" :loading="processSaving" @click="submitProcess">保存</el-button>
+      </template>
+    </el-dialog>
 
     <BottomNav active="home" />
   </div>
@@ -64,9 +111,11 @@ import { useRoute, useRouter } from 'vue-router'
 import BottomNav from '../components/BottomNav.vue'
 import seafoodLogo from '../assets/images/海鲜.png'
 import bannerBg from '../assets/images/海鲜产品溯源.jpeg'
-import { batchDetailApi, processListApi } from '../api/batch'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { batchDetailApi, processAddApi, processDeleteApi, processListApi } from '../api/batch'
 import { citiesApi, nodesApi, provincesApi } from '../api/region'
 import {
+  PROCESS_STEPS,
   UPSTREAM_NAME,
   UPSTREAM_TYPE,
   getLoginNode,
@@ -88,6 +137,79 @@ const loading = ref(false)
 const provName = ref('')
 const cityName = ref('')
 const upNodeName = ref('')
+
+// ---------------- 加工工序维护 ----------------
+const processVisible = ref(false)
+const processSaving = ref(false)
+const processForm = reactive({
+  step: '',
+  stepTime: '',
+  temperature: '',
+  operator: '',
+  remark: ''
+})
+
+// 批号下架后不再允许增删工序（后端同样会拦截，这里是前端体验层）
+const canEditProcess = computed(() => nodeType === 2 && detail.status !== 4)
+
+// 时间显示去掉秒与 T，形如 2026-02-16 10:00
+function formatTime(t) {
+  return String(t || '').replace('T', ' ').slice(0, 16)
+}
+
+function openProcessDialog() {
+  processForm.step = ''
+  processForm.stepTime = ''
+  processForm.temperature = ''
+  processForm.operator = ''
+  processForm.remark = ''
+  processVisible.value = true
+}
+
+async function submitProcess() {
+  if (!processForm.step) {
+    ElMessage.warning('请选择工序')
+    return
+  }
+  processSaving.value = true
+  try {
+    await processAddApi({
+      frozBatchId: Number(route.params.id),
+      step: processForm.step,
+      stepTime: processForm.stepTime || null,
+      temperature: processForm.temperature || null,
+      operator: processForm.operator || null,
+      remark: processForm.remark || null
+    })
+    ElMessage.success('工序添加成功！')
+    processVisible.value = false
+    await loadProcess()
+  } finally {
+    processSaving.value = false
+  }
+}
+
+async function handleDeleteProcess(rec) {
+  try {
+    await ElMessageBox.confirm(`确定删除工序「${rec.step}」吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+  await processDeleteApi(rec.recordId)
+  ElMessage.success('删除成功！')
+  await loadProcess()
+}
+
+// 拉取工序列表（独立成函数，便于增删后刷新）
+async function loadProcess() {
+  if (nodeType !== 2) return
+  const res = await processListApi(route.params.id)
+  records.value = res.data || []
+}
 
 // 详情字段按角色组装：养殖显示检疫合格证/官方检疫员，其余环节显示进场信息
 const infoItems = computed(() => {
@@ -138,10 +260,7 @@ onMounted(async () => {
       }
     }
 
-    if (nodeType === 2) {
-      const res2 = await processListApi(route.params.id)
-      records.value = res2.data || []
-    }
+    await loadProcess()
   } finally {
     loading.value = false
   }
@@ -281,11 +400,56 @@ onMounted(async () => {
 
 /* 加工工序记录 */
 .process-title {
-  margin-top: 22px;
   padding: 0 2px;
+}
+
+/* 工序区块标题行：左侧标题 + 右侧新增按钮 */
+.process-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 22px;
 }
 
 .process-table {
   margin-top: 8px;
+}
+
+/* 单条工序：右下角放删除按钮 */
+.process-cell {
+  position: relative;
+}
+
+.mini-btn.add {
+  width: auto;
+  padding: 0 14px;
+  height: 30px;
+  background: #1d6fb8;
+  border-radius: 15px;
+  color: #fff;
+  font-size: 13px;
+}
+
+.mini-btn.add:hover {
+  background: #0b4f8c;
+}
+
+.mini-btn.del {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: auto;
+  padding: 0 12px;
+  height: 26px;
+  border: 1px solid #f56c6c;
+  border-radius: 13px;
+  color: #f56c6c;
+  font-size: 12px;
+  background: #fff;
+}
+
+.mini-btn.del:hover {
+  background: #f56c6c;
+  color: #fff;
 }
 </style>

@@ -55,13 +55,13 @@
           </el-form-item>
         </el-form>
 
-        <!-- 演示账号快捷填充 -->
+        <!-- 演示账号快捷填充（与数据库中的实际账号一致，密码均为 123456） -->
         <el-divider content-position="center">演示账号（密码均为 123456）</el-divider>
         <div class="demo-tips">
-          <el-tag size="small" effect="plain" @click="fillDemo('farm001')">farm001 养殖企业</el-tag>
+          <el-tag size="small" effect="plain" @click="fillDemo('farm101')">farm101 养殖企业</el-tag>
           <el-tag size="small" effect="plain" @click="fillDemo('froz001')">froz001 冷冻加工企业</el-tag>
-          <el-tag size="small" effect="plain" @click="fillDemo('whol001')">whol001 批发商</el-tag>
-          <el-tag size="small" effect="plain" @click="fillDemo('reta001')">reta001 零售商</el-tag>
+          <el-tag size="small" effect="plain" @click="fillDemo('whol101')">whol101 批发商</el-tag>
+          <el-tag size="small" effect="plain" @click="fillDemo('reta101')">reta101 零售商</el-tag>
         </div>
 
         <div class="other-entry">

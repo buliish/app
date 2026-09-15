@@ -45,7 +45,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import BottomNav from '../components/BottomNav.vue'
 import seafoodLogo from '../assets/images/海鲜.png'
 import bannerBg from '../assets/images/海鲜产品溯源.jpeg'
@@ -106,10 +105,6 @@ onMounted(async () => {
 })
 
 function handleMenuClick(item) {
-  if (!item.path) {
-    ElMessage.info(`「${item.name}」模块暂未开放`)
-    return
-  }
   router.push(item.path)
 }
 </script>

@@ -37,7 +37,9 @@ const routes = [
   { path: '/confirm', name: 'Confirm', component: ConfirmView, meta: { title: '下游企业进场确认', requiresAuth: true } },
   { path: '/trace', name: 'Trace', component: TraceView, meta: { title: '对虾食品溯源查询' } },
   { path: '/sys/login', name: 'AdminLogin', component: AdminLoginView, meta: { title: '管理端登录' } },
-  { path: '/sys/nodes', name: 'AdminNodes', component: NodeManageView, meta: { title: '节点企业注册信息管理', requiresAdmin: true } }
+  { path: '/sys/nodes', name: 'AdminNodes', component: NodeManageView, meta: { title: '节点企业注册信息管理', requiresAdmin: true } },
+  // 404 兜底：必须放在最后，匹配所有未定义的路径
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFoundView.vue'), meta: { title: '页面不存在' } }
 ]
 
 const router = createRouter({

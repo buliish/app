@@ -18,11 +18,12 @@
         <img :src="bannerBg" alt="海鲜产品溯源" class="banner-img" />
       </div>
 
-      <!-- 状态单选：待发布 / 已发布 -->
+      <!-- 状态单选：按企业类型渲染（养殖为 待发布/已发布，其余为 新建/待确认/已确认） -->
       <div class="status-radio">
         <el-radio-group v-model="activeStatus" @change="loadList">
-          <el-radio value="1">待发布</el-radio>
-          <el-radio value="2">已发布</el-radio>
+          <el-radio v-for="tab in tabs" :key="tab.value" :value="String(tab.value)">
+            {{ tab.label }}
+          </el-radio>
         </el-radio-group>
       </div>
 
@@ -49,10 +50,15 @@
             <p class="info-line">
               {{ nodeType === 1 ? '检疫合格证' : '进场批号' }}：{{ nodeType === 1 ? row.quarantineNo || '—' : row.upBatchNo || '—' }}
             </p>
+            <!-- 零售商批号经上游确认后会生成溯源标识码，这里直接展示出来 -->
+            <p v-if="row.traceCode" class="info-line trace-line">
+              溯源标识码：<span class="trace-code">{{ row.traceCode }}</span>
+            </p>
           </div>
 
-          <!-- 右侧：操作按钮（待发布→更新/删除；已发布→下架） -->
+          <!-- 右侧：操作按钮按状态区分 -->
           <div class="action-block">
+            <!-- 新建 / 待发布：可更新、删除 -->
             <template v-if="row.status === 1">
               <button
                 type="button"
@@ -63,13 +69,41 @@
               </button>
               <button type="button" class="mini-btn delete" @click.stop="handleDelete(row)">删除</button>
             </template>
+            <!-- 待确认：等待上游处理，不可操作 -->
+            <template v-else-if="row.status === 2">
+              <span class="status-hint">等待上游确认</span>
+            </template>
+            <!-- 已确认：可下架；零售商另可查看溯源二维码 -->
             <template v-else>
+              <button
+                v-if="row.traceCode"
+                type="button"
+                class="mini-btn trace"
+                @click.stop="showQrcode(row)"
+              >
+                溯源码
+              </button>
               <button type="button" class="mini-btn offline" @click.stop="handleOffline(row)">下架</button>
             </template>
           </div>
         </div>
       </div>
     </main>
+
+    <!-- 溯源二维码弹窗 -->
+    <el-dialog v-model="qrVisible" title="溯源二维码" width="340px" align-center>
+      <div v-if="qrRow" class="qr-box">
+        <img :src="qrUrl(qrRow.traceCode)" alt="溯源二维码" class="qr-img" />
+        <p class="qr-code-text">{{ qrRow.traceCode }}</p>
+        <p class="qr-tip">消费者扫码即可查看从养殖到零售的全链路信息</p>
+      </div>
+      <template #footer>
+        <button type="button" class="mini-btn update" @click="downloadQr(qrRow.traceCode)">
+          下载二维码
+        </button>
+        <button type="button" class="mini-btn delete" @click="qrVisible = false">关闭</button>
+      </template>
+    </el-dialog>
 
     <BottomNav active="home" />
   </div>
@@ -83,20 +117,26 @@ import BottomNav from '../components/BottomNav.vue'
 import seafoodLogo from '../assets/images/海鲜.png'
 import bannerBg from '../assets/images/海鲜产品溯源.jpeg'
 import { batchListApi, batchDeleteApi, batchOfflineApi } from '../api/batch'
-import { getLoginNode } from '../utils/nodeType'
+import { getLoginNode, statusTabs } from '../utils/nodeType'
 
 const router = useRouter()
 const node = getLoginNode()
 const nodeType = node.nodeType || 1
 
+// 可选状态项按企业类型生成：
+// 养殖企业为「待发布 / 已发布」，其余为「新建 / 待确认 / 已确认」
+const tabs = statusTabs(nodeType)
+
 // 批号主键字段名按企业类型区分，取当前登录企业类型对应的字段
 const ID_KEY = { 1: 'farmBatchId', 2: 'frozBatchId', 3: 'wholBatchId', 4: 'retaBatchId' }
 const idOf = (row) => row[ID_KEY[nodeType]]
 
-// 浏览状态：1 待发布（新建，默认）、2 已发布；已下架（3）不提供浏览入口
-const activeStatus = ref('1')
+// 浏览状态：默认停留在第一个状态；已下架不提供浏览入口
+const activeStatus = ref(String(tabs[0].value))
 const list = ref([])
 const loading = ref(false)
+const qrVisible = ref(false)
+const qrRow = ref(null)
 
 onMounted(loadList)
 
@@ -132,6 +172,27 @@ function handleDelete(row) {
       loadList()
     })
     .catch(() => {})
+}
+
+// 查看溯源二维码（零售商批号经上游确认后生成）
+function showQrcode(row) {
+  qrRow.value = row
+  qrVisible.value = true
+}
+
+// 二维码图片地址：走后端接口生成，同源代理由 vite 转发
+function qrUrl(traceCode) {
+  return `/trace/qrcode/${encodeURIComponent(traceCode)}`
+}
+
+// 下载二维码
+function downloadQr(traceCode) {
+  const a = document.createElement('a')
+  a.href = qrUrl(traceCode)
+  a.download = `溯源二维码-${traceCode}.png`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 // 下架已发布批号（下架后不可再浏览）
@@ -337,5 +398,70 @@ function handleOffline(row) {
   background: #f56c6c;
   border-color: #f56c6c;
   color: #fff;
+}
+
+/* 已确认状态下展示的溯源标识码 */
+.info-line.trace-line {
+  color: #0f9d58;
+}
+
+.trace-code {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* 待确认状态的说明文字 */
+.status-hint {
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 溯源按钮（绿色，与"已确认"状态呼应） */
+.mini-btn.trace {
+  width: 64px;
+  height: 40px;
+  background: #0f9d58;
+  border-radius: 20px;
+  color: #fff;
+}
+
+.mini-btn.trace:hover {
+  background: #0b7a43;
+}
+
+/* 二维码弹窗 */
+.qr-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.qr-img {
+  width: 220px;
+  height: 220px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+}
+
+.qr-code-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0b4f8c;
+  letter-spacing: 0.5px;
+}
+
+.qr-tip {
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
+}
+
+/* 弹窗底部按钮复用了列表的 mini-btn 样式，这里去掉固定宽度以便自适应 */
+.qr-box ~ * .mini-btn,
+:deep(.el-dialog__footer) .mini-btn {
+  width: auto;
+  padding: 0 18px;
+  margin-left: 8px;
 }
 </style>

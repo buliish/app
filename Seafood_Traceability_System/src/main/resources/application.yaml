@@ -17,6 +17,14 @@ jwt:
   secret: ${JWT_SECRET:seafood-traceability-system-2026}
   ttl-hours: 12
 
+# 溯源二维码配置
+# base-url 是扫码后要打开的页面地址（前端溯源页）。
+# 用手机扫码演示时，把 localhost 换成本机局域网 IP（cmd 执行 ipconfig 查看）。
+trace:
+  qrcode:
+    base-url: ${TRACE_QR_BASE_URL:http://localhost:5173/trace?code=}
+    size: 300
+
 # MyBatis-Plus 配置
 mybatis-plus:
   configuration:

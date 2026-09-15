@@ -49,6 +49,9 @@ export const UPSTREAM_REGION_LABEL = {
 // 批号生产阶段（仅养殖企业）
 export const BREED_STAGE = ['虾苗', '成虾']
 
+// 加工工序步骤（仅冷冻加工企业）
+export const PROCESS_STEPS = ['清洗', '分级', '冷冻', '包装']
+
 // 产品类型（加工/批发/零售）
 export const PRODUCT_TYPES = ['冷冻整虾', '冷冻虾仁', '虾滑', '虾饺', '虾丸']
 
@@ -86,11 +89,7 @@ export function getLoginNode() {
   return JSON.parse(localStorage.getItem('nodeInfo') || 'null') || {}
 }
 
-// 当前登录企业类型与接口前缀
-export function currentType() {
-  return getLoginNode().nodeType || 1
-}
-
+// 当前登录企业类型对应的接口前缀
 export function prefixOf(nodeType) {
   return TYPE_PREFIX[nodeType] || 'farm'
 }
