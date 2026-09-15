@@ -12,6 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -36,6 +37,39 @@ public class TraceController {
     /** 二维码图片边长 */
     @Value("${trace.qrcode.size:300}")
     private int qrSize;
+
+    /**
+     * 在售商品列表（消费者端首页"售卖的产品"）。
+     * <p>
+     * 免登录；/trace/** 整体在 LoginInterceptor 的放行名单里。
+     */
+    @GetMapping("/products")
+    public Result<Map<String, Object>> products(
+            @RequestParam(defaultValue = "1") long current,
+            @RequestParam(defaultValue = "12") long size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String form,
+            @RequestParam(required = false) Integer provId) {
+        // 关键词长度设限，避免超长串直接打到数据库（与溯源标识码同样的防护思路）
+        if (keyword != null && keyword.length() > 50) {
+            throw new BizException("查询关键词过长");
+        }
+        return Result.success(traceService.listProducts(current, size, keyword, form, provId));
+    }
+
+    /**
+     * 商品详情：产品信息 + 四级企业链 + 各环节检测记录 + 加工工序。
+     * <p>
+     * 入口支持溯源码或对外产品编号。
+     */
+    @GetMapping("/product/{code}")
+    public Result<Map<String, Object>> product(@PathVariable String code) {
+        Map<String, Object> data = traceService.productDetailByTraceCode(code.trim());
+        if (data == null) {
+            return Result.error("未找到该产品，请核对编码后重试");
+        }
+        return Result.success(data);
+    }
 
     /**
      * 生成溯源二维码（PNG 图片流）。

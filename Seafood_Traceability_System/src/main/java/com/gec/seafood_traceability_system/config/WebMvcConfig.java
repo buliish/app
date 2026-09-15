@@ -43,8 +43,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/admin/login");
 
         // 3. 节点端权限：必须是企业 token（防止管理员 token 被当作企业编号使用）
+        //    /inspection/** 是四个环节共用的检测记录接口，用 stageType 区分批号表，
+        //    归属校验在 Controller 内委托给 OwnedBatchRegistry，但鉴权必须先在这里拦住
         registry.addInterceptor(nodeAuthInterceptor)
-                .addPathPatterns("/user/**", "/farm/**", "/froz/**", "/whol/**", "/reta/**")
+                .addPathPatterns("/user/**", "/farm/**", "/froz/**", "/whol/**", "/reta/**", "/inspection/**")
                 .excludePathPatterns("/user/login", "/user/logout");
     }
 

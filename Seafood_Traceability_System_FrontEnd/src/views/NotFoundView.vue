@@ -1,9 +1,9 @@
 <template>
   <!-- 404 兜底页：未匹配的路由不再白屏 -->
   <div class="page">
-    <header class="page-header">
-      <img :src="seafoodLogo" alt="logo" class="header-logo" />
-      <h1 class="header-title">冷冻对虾全产业链溯源系统</h1>
+    <header class="app-header">
+      <img :src="seafoodLogo" alt="logo" class="app-header-logo" />
+      <h1 class="app-header-title">冷冻对虾全产业链溯源系统</h1>
     </header>
 
     <main class="body">
@@ -33,25 +33,8 @@ const router = useRouter()
   background: #f7f9fc;
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  height: 56px;
-  background: linear-gradient(90deg, #0b4f8c, #1d6fb8);
-}
 
-.header-logo {
-  width: 28px;
-  height: 28px;
-}
 
-.header-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: #fff;
-}
 
 .body {
   max-width: 540px;

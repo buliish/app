@@ -21,6 +21,14 @@ public interface WholBatchService extends OwnedBatchService<WholBatch> {
     List<ConfirmVO> listPendingConfirm(Integer wholNodeId, String downName);
 
     /**
+     * 按进场批号查下游待确认批号，并 JOIN 出下游企业（多对一，见 WholBatchMapper.xml）
+     *
+     * @param upBatchNos 本企业已确认的产品批号，调用方保证非空
+     * @param downName   下游企业名称模糊条件，可为 null
+     */
+    List<ConfirmVO> listDownConfirm(List<String> upBatchNos, String downName);
+
+    /**
      * 确认下游企业进场（零售商批号 -> 已确认并生成溯源标识码）
      *
      * @param retaBatchId 下游零售商批号主键

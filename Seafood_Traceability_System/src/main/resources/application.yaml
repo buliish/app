@@ -27,6 +27,9 @@ trace:
 
 # MyBatis-Plus 配置
 mybatis-plus:
+  # 关联映射与批量操作写在 XML 里（多对一 / 一对多 / <foreach> 批量插入），
+  # 其余单表增删改查仍由 BaseMapper 自动生成，不重复造轮子
+  mapper-locations: classpath*:/mapper/**/*.xml
   configuration:
     # 下划线命名转驼峰命名
     map-underscore-to-camel-case: true

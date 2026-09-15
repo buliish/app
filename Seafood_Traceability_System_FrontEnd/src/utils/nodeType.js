@@ -53,7 +53,34 @@ export const BREED_STAGE = ['虾苗', '成虾']
 export const PROCESS_STEPS = ['清洗', '分级', '冷冻', '包装']
 
 // 产品类型（加工/批发/零售）
-export const PRODUCT_TYPES = ['冷冻整虾', '冷冻虾仁', '虾滑', '虾饺', '虾丸']
+export const PRODUCT_TYPES = ['冷冻整虾', '冷冻虾仁', '冰鲜整虾', '虾滑', '虾饺', '虾丸']
+
+// 来源方式（仅养殖企业）：溯源链最源头是养殖地还是打捞地
+export const SOURCE_TYPES = ['人工养殖', '海洋捕捞']
+
+// 产品形态（加工环节定型，下游继承）
+export const PRODUCT_FORMS = ['鲜虾', '冻虾']
+
+// 规格等级（加工环节定型，下游继承）
+export const SPEC_GRADES = ['30-40只/斤', '40-50只/斤', '50-60只/斤', '60-70只/斤']
+
+// 本环节质量状态（各环节独立填写，不继承）
+export const QUALITY_STATUS = { 0: '待检', 1: '合格', 2: '不合格' }
+
+export function qualityText(status) {
+  return QUALITY_STATUS[status] || '待检'
+}
+
+// 质量状态标签颜色，与 el-tag 的 type 对应
+export function qualityTagType(status) {
+  return { 0: 'info', 1: 'success', 2: 'danger' }[status] || 'info'
+}
+
+// 检测项目候选（检测记录录入用）
+export const INSPECT_ITEMS = ['感官', '菌落总数', '大肠菌群', '氯霉素', '重金属镉', '水分']
+
+// 单项判定 / 整批结论
+export const JUDGE_RESULTS = { 1: '合格', 2: '不合格' }
 
 // 批号状态：养殖企业为 1待发布/2已发布/3已下架，其余角色为 1新建/2待确认/3已确认/4已下架
 const FARM_STATUS = { 1: '待发布', 2: '已发布', 3: '已下架' }

@@ -1,19 +1,20 @@
 package com.gec.seafood_traceability_system.service.impl;
 
+import com.gec.seafood_traceability_system.mapper.RetaBatchMapper;
 import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.FarmBatch;
 import com.gec.seafood_traceability_system.pojo.FrozBatch;
 import com.gec.seafood_traceability_system.pojo.NodeInfo;
 import com.gec.seafood_traceability_system.pojo.ProcessRecord;
 import com.gec.seafood_traceability_system.pojo.RetaBatch;
+import com.gec.seafood_traceability_system.pojo.TraceChain;
 import com.gec.seafood_traceability_system.pojo.WholBatch;
-import com.gec.seafood_traceability_system.service.FarmBatchService;
-import com.gec.seafood_traceability_system.service.FrozBatchService;
-import com.gec.seafood_traceability_system.service.NodeInfoService;
-import com.gec.seafood_traceability_system.service.ProcessRecordService;
+import com.gec.seafood_traceability_system.service.InspectionService;
 import com.gec.seafood_traceability_system.service.RetaBatchService;
+import com.gec.seafood_traceability_system.service.TraceChainLoader;
 import com.gec.seafood_traceability_system.service.TraceService;
-import com.gec.seafood_traceability_system.service.WholBatchService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,55 +23,112 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 消费者溯源业务实现：沿批号逐级上溯 零售 -> 批发 -> 冷冻加工 -> 养殖 */
+/**
+ * 消费者溯源业务实现
+ * <p>
+ * 链路走查已抽到 {@link TraceChainLoader}（管理端复用同一实现），
+ * 本类只负责：查入口批号 → 施加消费者侧的状态门槛 → 渲染成前端契约的 Map。
+ */
 @Service
 public class TraceServiceImpl implements TraceService {
 
     @Autowired
-    private NodeInfoService nodeInfoService;
-
-    @Autowired
-    private FarmBatchService farmBatchService;
-
-    @Autowired
-    private FrozBatchService frozBatchService;
-
-    @Autowired
-    private WholBatchService wholBatchService;
+    private TraceChainLoader traceChainLoader;
 
     @Autowired
     private RetaBatchService retaBatchService;
 
     @Autowired
-    private ProcessRecordService processRecordService;
+    private InspectionService inspectionService;
+
+    /** 直接注入 Mapper：商品列表要走 XML 里的一条 JOIN 查询 */
+    @Autowired
+    private RetaBatchMapper retaBatchMapper;
+
+    /** 单页最多返回的商品数，避免超大分页拖垮查询 */
+    private static final long MAX_PAGE_SIZE = 50;
 
     @Override
-    public Map<String, Object> trace(String traceCode) {
-        RetaBatch reta = retaBatchService.lambdaQuery().eq(RetaBatch::getTraceCode, traceCode).one();
+    public Map<String, Object> listProducts(long current, long size, String keyword, String form, Integer provId) {
+        long safeCurrent = Math.max(current, 1);
+        long safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        IPage<Map<String, Object>> page = new Page<>(safeCurrent, safeSize);
+        // 一条 JOIN 取全四级链路信息，不做逐卡片的链路回走
+        IPage<Map<String, Object>> result = retaBatchMapper.selectProductPage(page, keyword, form, provId);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("total", result.getTotal());
+        data.put("current", result.getCurrent());
+        data.put("size", result.getSize());
+        data.put("records", result.getRecords());
+        return data;
+    }
+
+    @Override
+    public Map<String, Object> productDetailByTraceCode(String traceCode) {
+        RetaBatch reta = findByCodeOrProductCode(traceCode);
         if (reta == null) {
             return null;
         }
-        // 已下架批号不再对外提供溯源（产品的流通凭证已失效）
+        TraceChain chain = traceChainLoader.loadByRetaBatchId(reta.getRetaBatchId());
+        if (chain == null) {
+            return null;
+        }
+        // 产品身份字段已由 render() 统一填充，这里只补详情独有的部分
+        Map<String, Object> data = render(chain);
+        data.put("inspections", inspectionService.listByRefs(chain.refs()));
+        // 已下架的链接仍可打开，但前端要给出明确提示
+        data.put("offline", reta.getStatus() == null || reta.getStatus() != 3);
+        return data;
+    }
+
+    /** 先按溯源码查，再退回按对外产品编号查（消费者可能输的是包装上的产品编号） */
+    private RetaBatch findByCodeOrProductCode(String code) {
+        RetaBatch reta = retaBatchService.lambdaQuery()
+                .eq(RetaBatch::getTraceCode, code)
+                .one();
+        if (reta == null) {
+            reta = retaBatchService.lambdaQuery()
+                    .eq(RetaBatch::getProductCode, code)
+                    .orderByDesc(RetaBatch::getRetaBatchId)
+                    .last("LIMIT 1")
+                    .one();
+        }
+        return reta;
+    }
+
+    @Override
+    public Map<String, Object> trace(String traceCode) {
+        // 先按溯源码查，再退回按对外产品编号查
+        RetaBatch reta = findByCodeOrProductCode(traceCode);
+        if (reta == null) {
+            return null;
+        }
+        // 已下架批号不再对外提供溯源（产品的流通凭证已失效）。
+        // 注意：这个门槛属于消费者侧的展示策略，必须留在本门面层，
+        // 不能下沉到 TraceChainLoader —— 否则管理端也看不到已下架批号了。
         if (reta.getStatus() == null || reta.getStatus() != 3) {
             throw new BizException("该产品批号已下架，暂不支持溯源查询");
         }
 
-        // 逐级上溯：除了批号，还限定"上游企业编号"，
-        // 避免不同企业出现同号批号时串链（与 up_node_id 字段的设计语义保持一致）
-        WholBatch whol = wholBatchService.lambdaQuery()
-                .eq(WholBatch::getBatchNo, reta.getUpBatchNo())
-                .eq(reta.getUpNodeId() != null, WholBatch::getNodeId, reta.getUpNodeId())
-                .one();
-        FrozBatch froz = whol == null ? null
-                : frozBatchService.lambdaQuery()
-                        .eq(FrozBatch::getBatchNo, whol.getUpBatchNo())
-                        .eq(whol.getUpNodeId() != null, FrozBatch::getNodeId, whol.getUpNodeId())
-                        .one();
-        FarmBatch farm = froz == null ? null
-                : farmBatchService.lambdaQuery()
-                        .eq(FarmBatch::getBatchNo, froz.getUpBatchNo())
-                        .eq(froz.getUpNodeId() != null, FarmBatch::getNodeId, froz.getUpNodeId())
-                        .one();
+        TraceChain chain = traceChainLoader.loadByRetaBatchId(reta.getRetaBatchId());
+        if (chain == null) {
+            return null;
+        }
+        return render(chain);
+    }
+
+    /**
+     * 渲染成前端契约。
+     * <p>
+     * 返回的 key 集合与改造前完全一致（TraceView.vue 的 nodeRows 直接读
+     * farm/processor/wholesaler/retailer 四个 key），新增字段一律追加。
+     */
+    private Map<String, Object> render(TraceChain chain) {
+        RetaBatch reta = chain.getReta();
+        WholBatch whol = chain.getWhol();
+        FrozBatch froz = chain.getFroz();
+        FarmBatch farm = chain.getFarm();
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("traceCode", reta.getTraceCode());
@@ -78,34 +136,46 @@ public class TraceServiceImpl implements TraceService {
         data.put("breed", reta.getBreed());
         data.put("productType", reta.getProductType());
         data.put("traceTime", reta.getTraceTime());
-
-        List<Map<String, Object>> chain = new ArrayList<>();
+        // 产品身份字段（消费者端商品卡用；老字段一律保留不动）
+        data.put("productCode", reta.getProductCode());
+        data.put("productForm", reta.getProductForm());
+        data.put("specGrade", reta.getSpecGrade());
+        data.put("price", reta.getPrice());
+        data.put("imageUrl", reta.getImageUrl());
+        data.put("qualityStatus", reta.getQualityStatus());
+        data.put("overallQuality", chain.overallQuality());
+        data.put("complete", chain.isComplete());
         if (farm != null) {
-            chain.add(stage("养殖企业", nodeInfoService.getById(farm.getNodeId()), farm.getBatchNo(),
+            data.put("sourceType", farm.getSourceType());
+        }
+
+        List<Map<String, Object>> stages = new ArrayList<>();
+        if (farm != null) {
+            stages.add(stage("养殖企业", chain.getFarmNode(), farm.getBatchNo(),
                     farm.getBreed(), farm.getBreedStage(), farm.getCreateTime()));
-            data.put("farm", stageDetail(nodeInfoService.getById(farm.getNodeId())));
+            data.put("farm", stageDetail(chain.getFarmNode()));
             data.put("farmBatch", farm);
         }
         if (froz != null) {
-            chain.add(stage("冷冻加工企业", nodeInfoService.getById(froz.getNodeId()), froz.getBatchNo(),
+            stages.add(stage("冷冻加工企业", chain.getFrozNode(), froz.getBatchNo(),
                     froz.getBreed(), froz.getProductType(), froz.getCreateTime()));
-            data.put("processor", stageDetail(nodeInfoService.getById(froz.getNodeId())));
+            data.put("processor", stageDetail(chain.getFrozNode()));
             data.put("frozBatch", froz);
             //加工工序记录（清洗/分级/冷冻/包装）
-            List<ProcessRecord> records = processRecordService.listByBatchId(froz.getFrozBatchId());
+            List<ProcessRecord> records = chain.getProcessRecords();
             data.put("processRecords", records);
         }
         if (whol != null) {
-            chain.add(stage("批发商", nodeInfoService.getById(whol.getNodeId()), whol.getBatchNo(),
+            stages.add(stage("批发商", chain.getWholNode(), whol.getBatchNo(),
                     whol.getBreed(), whol.getProductType(), whol.getCreateTime()));
-            data.put("wholesaler", stageDetail(nodeInfoService.getById(whol.getNodeId())));
+            data.put("wholesaler", stageDetail(chain.getWholNode()));
             data.put("wholBatch", whol);
         }
-        chain.add(stage("零售商", nodeInfoService.getById(reta.getNodeId()), reta.getBatchNo(),
+        stages.add(stage("零售商", chain.getRetaNode(), reta.getBatchNo(),
                 reta.getBreed(), reta.getProductType(), reta.getCreateTime()));
-        data.put("retailer", stageDetail(nodeInfoService.getById(reta.getNodeId())));
+        data.put("retailer", stageDetail(chain.getRetaNode()));
         data.put("retaBatch", reta);
-        data.put("chain", chain);
+        data.put("chain", stages);
         return data;
     }
 

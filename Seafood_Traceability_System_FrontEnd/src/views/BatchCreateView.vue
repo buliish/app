@@ -7,9 +7,9 @@
   -->
   <div class="page">
     <!-- 顶部标题栏：Logo + 系统名称居中 -->
-    <header class="page-header">
-      <img :src="seafoodLogo" alt="logo" class="header-logo" />
-      <h1 class="header-title">冷冻对虾全产业链溯源系统</h1>
+    <header class="app-header">
+      <img :src="seafoodLogo" alt="logo" class="app-header-logo" />
+      <h1 class="app-header-title">冷冻对虾全产业链溯源系统</h1>
     </header>
 
     <main class="body">
@@ -51,6 +51,13 @@
             </el-select>
           </el-form-item>
 
+          <!--
+            上游企业产品品种：选中上游批号后自动带出，且必须禁用（事件表：「…产品品种输入框」禁用）。
+            锁死不可改是为了保证上游产品身份不被下游篡改，下游批号的品种一律沿用上游。
+          -->
+          <el-form-item :label="upstreamName + '产品品种'" prop="breed">
+            <el-input v-model="form.breed" placeholder="选择上游产品批号后自动带出" disabled />
+          </el-form-item>
         </template>
 
         <!-- ============ 本企业产品批号信息 ============ -->
@@ -61,12 +68,9 @@
           <el-input v-model="form.batchNo" placeholder="请输入产品批号" :disabled="isUpdate" @blur="checkBatchNo" />
         </el-form-item>
 
-        <!-- 产品品种（所有角色通用；上游环节选择批号后自动带出，可手工修正） -->
-        <el-form-item label="产品品种" prop="breed">
-          <el-input
-            v-model="form.breed"
-            :placeholder="nodeType === 1 ? '请输入产品品种' : '选择上游批号后自动带出，可手工修正'"
-          />
+        <!-- 产品品种：仅养殖企业可自行录入；加工/批发/零售的品种由上游进场信息带出（见上方禁用项） -->
+        <el-form-item v-if="nodeType === 1" label="产品品种" prop="breed">
+          <el-input v-model="form.breed" placeholder="请输入产品品种" />
         </el-form-item>
 
         <!-- 养殖企业专属：养殖阶段（虾苗 / 成虾） -->
@@ -76,16 +80,16 @@
           </el-select>
         </el-form-item>
 
-        <!-- 加工企业专属：产品类型 -->
+        <!-- 加工企业专属：产品类型（本环节加工成什么产品，由本企业决定，可编辑） -->
         <el-form-item v-if="nodeType === 2" label="产品类型" prop="productType">
           <el-select v-model="form.productType" placeholder="请选择产品类型">
             <el-option v-for="t in PRODUCT_TYPES" :key="t" :label="t" :value="t" />
           </el-select>
         </el-form-item>
 
-        <!-- 批发商 / 零售商产品类型以上游环节信息为准 -->
+        <!-- 批发商 / 零售商：产品类型同样沿用上游，仅展示不可改 -->
         <el-form-item v-if="nodeType === 3 || nodeType === 4" label="产品类型" prop="productType">
-          <el-input v-model="form.productType" placeholder="选择上游批号后自动带出，可手工修正" />
+          <el-input v-model="form.productType" placeholder="选择上游产品批号后自动带出" disabled />
         </el-form-item>
 
         <!-- 合格证：养殖为动物检验检疫合格证，加工为产品检验检疫合格证 -->
@@ -184,7 +188,10 @@ const form = reactive({
 
 const rules = {
   batchNo: [{ required: true, message: '请输入产品批号', trigger: 'blur' }],
-  breed: [{ required: true, message: '请输入产品品种', trigger: 'blur' }],
+  // 下游角色的品种由上游带出且禁用，校验提示要指向"选上游批号"而不是"填品种"
+  breed: [
+    { required: true, message: nodeType === 1 ? '请输入产品品种' : '请先选择上游产品批号', trigger: 'blur' }
+  ],
   provId: [{ required: true, message: '请选择省', trigger: 'change' }],
   cityId: [{ required: true, message: '请选择市', trigger: 'change' }],
   upNodeId: [{ required: true, message: '请选择上游企业', trigger: 'change' }],
@@ -247,12 +254,13 @@ async function onUpNodeChange(nodeId, clearBatch = true) {
   upBatches.value = res.data || []
 }
 
-//选择上游批号后自动带出品种与产品类型
+//选择上游批号后自动带出品种与产品类型（两者下游均不可手工修改）
 function onUpBatchChange(batchNo) {
   const target = upBatches.value.find((b) => b.batchNo === batchNo)
   if (!target) return
-  if (target.breed) form.breed = target.breed
-  if (target.productType) form.productType = target.productType
+  // 无条件赋值：切换上游批号时必须覆盖旧值，否则会残留上一批的品种/类型
+  form.breed = target.breed || ''
+  form.productType = target.productType || ''
 }
 
 //批号唯一性校验（blur 事件，仅新建时）：已存在则提示重新输入；更新时批号禁用不校验
@@ -312,33 +320,8 @@ async function handleSubmit() {
 }
 
 /* 顶部标题栏（与功能菜单页一致） */
-.page-header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  height: 56px;
-  padding: 0 16px;
-  background: linear-gradient(90deg, #0b4f8c 0%, #1d6fb8 100%);
-  border-bottom: 1px solid #0b4f8c;
-}
 
-.header-logo {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
-  border-radius: 6px;
-  background-color: #fff;
-  padding: 2px;
-}
 
-.header-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
-  letter-spacing: 1px;
-}
 
 /* 主体可滚动区 */
 .body {
@@ -351,19 +334,7 @@ async function handleSubmit() {
 }
 
 /* banner */
-.banner-wrap {
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(11, 79, 140, 0.08);
-}
 
-.banner-img {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  display: block;
-}
 
 /* 表单：标签在输入框上方 */
 .batch-form {

@@ -13,6 +13,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -122,6 +123,42 @@ public class FrozBatchController {
         }
         processRecordService.save(record);
         return Result.success();
+    }
+
+    /**
+     * 批量新增工序记录（一次录入清洗/分级/冷冻/包装整套工序）
+     * 走数据层批量插入，避免循环调用单条接口
+     */
+    @PostMapping("/process/batch")
+    public Result<Map<String, Object>> addProcessBatch(@RequestBody List<ProcessRecord> records) {
+        if (records == null || records.isEmpty()) {
+            throw new BizException("请至少录入一条工序");
+        }
+        // 同批提交的工序必须属于同一个加工批号，否则无法统一校验归属
+        Integer batchId = records.get(0).getFrozBatchId();
+        if (batchId == null) {
+            throw new BizException("缺少所属加工批号");
+        }
+        boolean sameBatch = records.stream().allMatch(r -> batchId.equals(r.getFrozBatchId()));
+        if (!sameBatch) {
+            throw new BizException("一次只能提交同一个加工批号的工序");
+        }
+        // 只能给本企业自己的批号添加工序
+        frozBatchService.requireOwned(batchId, currentNodeId(), 1, 2, 3);
+
+        LocalDateTime now = LocalDateTime.now();
+        for (ProcessRecord r : records) {
+            r.setRecordId(null);
+            r.setNodeId(currentNodeId());
+            if (r.getStepTime() == null) {
+                r.setStepTime(now);
+            }
+        }
+        int inserted = processRecordService.saveBatchRecords(records);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("inserted", inserted);
+        return Result.success(data);
     }
 
     /** 删除工序记录 */

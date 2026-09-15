@@ -44,6 +44,13 @@
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
+        <!-- 二维码生成：只引 core，不引 javase（可少一个 jcommander 传递依赖） -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+
         <!-- MySQL 驱动 -->
         <dependency>
             <groupId>com.mysql</groupId>

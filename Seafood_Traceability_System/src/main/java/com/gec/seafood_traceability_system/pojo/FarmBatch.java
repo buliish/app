@@ -29,6 +29,21 @@ public class FarmBatch implements NodeOwned {
     /** 养殖阶段：虾苗/成虾 */
     private String breedStage;
 
+    /** 来源方式：人工养殖/海洋捕捞（溯源链最源头的"养殖地 or 打捞地"） */
+    private String sourceType;
+
+    /** 产品形态：鲜虾/冻虾（养殖环节出塘即鲜虾） */
+    private String productForm;
+
+    /**
+     * 本环节质量状态：0 待检 1 合格 2 不合格。
+     * <p>
+     * 命名不能叫 status —— {@link NodeOwned#getStatus()} 被
+     * OwnedBatchService.requireOwned() 用作工作流状态白名单，
+     * 而 Lombok 会为新字段生成 getStatus() 覆盖默认方法，导致状态校验静默失效。
+     */
+    private Integer qualityStatus;
+
     /** 动物检验检疫合格证 */
     private String quarantineNo;
 

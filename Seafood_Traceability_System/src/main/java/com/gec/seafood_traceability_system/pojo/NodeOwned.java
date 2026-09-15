@@ -13,6 +13,19 @@ public interface NodeOwned {
     Integer getNodeId();
 
     /**
+     * 产品批号。
+     * <p>
+     * 四类批号实体都有该字段，Lombok 生成的 getBatchNo() 会自动覆盖本默认方法；
+     * 没有批号概念的实体（如 ProcessRecord）沿用这里返回 null。
+     * <p>
+     * 检测记录写入时需要把批号回填到冗余列 batch_no，从本接口暴露出来即可，
+     * 免得在 Controller 里为四张表写类型分支。
+     */
+    default String getBatchNo() {
+        return null;
+    }
+
+    /**
      * 业务状态值。
      * <p>
      * 四类批号实体都有 status 字段，Lombok 生成的 getStatus() 会自动覆盖本默认方法；

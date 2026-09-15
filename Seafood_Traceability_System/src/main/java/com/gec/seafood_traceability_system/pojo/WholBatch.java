@@ -38,6 +38,22 @@ public class WholBatch implements NodeOwned {
 
     private String productType;
 
+    /** 产品形态：鲜虾/冻虾（继承上游加工环节） */
+    private String productForm;
+
+    /** 规格等级（继承上游加工环节） */
+    private String specGrade;
+
+    /**
+     * 本环节质量状态：0 待检 1 合格 2 不合格。
+     * <p>
+     * 命名不能叫 status —— 见 {@code FarmBatch#qualityStatus} 的说明。
+     */
+    private Integer qualityStatus;
+
+    /** 对外产品编号（继承上游加工环节） */
+    private String productCode;
+
     /** 1 新建 2 待确认 3 已确认 4 已下架 */
     private Integer status;
 

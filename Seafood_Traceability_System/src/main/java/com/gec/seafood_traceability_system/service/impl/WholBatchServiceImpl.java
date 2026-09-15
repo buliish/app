@@ -1,11 +1,9 @@
 package com.gec.seafood_traceability_system.service.impl;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gec.seafood_traceability_system.mapper.WholBatchMapper;
 import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.ConfirmVO;
-import com.gec.seafood_traceability_system.pojo.NodeInfo;
 import com.gec.seafood_traceability_system.pojo.RetaBatch;
 import com.gec.seafood_traceability_system.pojo.Result;
 import com.gec.seafood_traceability_system.pojo.WholBatch;
@@ -15,12 +13,10 @@ import com.gec.seafood_traceability_system.service.WholBatchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -70,36 +66,18 @@ public class WholBatchServiceImpl extends ServiceImpl<WholBatchMapper, WholBatch
         if (upBatchNos.isEmpty()) {
             return new ArrayList<>();
         }
-        //2.以这些批号作为进场批号、且状态为待确认的下游（零售商）批号
-        List<RetaBatch> downs = retaBatchService.list(Wrappers.lambdaQuery(RetaBatch.class)
-                .in(RetaBatch::getUpBatchNo, upBatchNos)
-                .eq(RetaBatch::getStatus, 2)
-                .orderByDesc(RetaBatch::getCreateTime));
-        if (downs.isEmpty()) {
+        //2.下游批号 + 所属企业一次 JOIN 查出（多对一），名称模糊匹配下推到 SQL
+        return listDownConfirm(upBatchNos, downName);
+    }
+
+    @Override
+    public List<ConfirmVO> listDownConfirm(List<String> upBatchNos, String downName) {
+        if (upBatchNos == null || upBatchNos.isEmpty()) {
             return new ArrayList<>();
         }
-        Map<Integer, String> nameMap = nodeInfoService.listByIds(
-                        downs.stream().map(RetaBatch::getNodeId).collect(Collectors.toSet()))
-                .stream().collect(Collectors.toMap(NodeInfo::getNodeId, NodeInfo::getName));
-
-        List<ConfirmVO> result = new ArrayList<>();
-        for (RetaBatch d : downs) {
-            String name = nameMap.get(d.getNodeId());
-            if (StringUtils.hasText(downName) && (name == null || !name.contains(downName))) {
-                continue;
-            }
-            ConfirmVO vo = new ConfirmVO();
-            vo.setId(d.getRetaBatchId());
-            vo.setDownNodeId(d.getNodeId());
-            vo.setDownName(name);
-            vo.setDownBatchNo(d.getBatchNo());
-            vo.setUpBatchNo(d.getUpBatchNo());
-            vo.setBreed(d.getBreed());
-            vo.setProductType(d.getProductType());
-            vo.setStatus(d.getStatus());
-            vo.setCreateTime(d.getCreateTime());
-            result.add(vo);
-        }
+        List<ConfirmVO> result = baseMapper.selectDownConfirmList(upBatchNos, downName);
+        // 关联映射把企业塞在 downNode 里，这里派生出前端契约字段 downName
+        result.forEach(vo -> vo.setDownName(vo.getDownNode() == null ? null : vo.getDownNode().getName()));
         return result;
     }
 

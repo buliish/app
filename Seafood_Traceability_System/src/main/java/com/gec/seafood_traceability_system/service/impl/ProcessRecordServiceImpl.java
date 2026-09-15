@@ -5,6 +5,7 @@ import com.gec.seafood_traceability_system.mapper.ProcessRecordMapper;
 import com.gec.seafood_traceability_system.pojo.ProcessRecord;
 import com.gec.seafood_traceability_system.service.ProcessRecordService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,5 +19,15 @@ public class ProcessRecordServiceImpl extends ServiceImpl<ProcessRecordMapper, P
                 .eq(ProcessRecord::getFrozBatchId, frozBatchId)
                 .orderByAsc(ProcessRecord::getRecordId)
                 .list();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int saveBatchRecords(List<ProcessRecord> records) {
+        if (records == null || records.isEmpty()) {
+            return 0;
+        }
+        // 走 XML 的 foreach 多值 INSERT，一次往返写完整套工序
+        return baseMapper.insertBatch(records);
     }
 }

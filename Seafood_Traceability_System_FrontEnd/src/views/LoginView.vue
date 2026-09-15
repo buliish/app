@@ -65,7 +65,7 @@
         </div>
 
         <div class="other-entry">
-          <el-link type="primary" @click="router.push('/trace')">消费者溯源查询</el-link>
+          <el-link type="primary" @click="router.push('/')">消费者端首页</el-link>
           <el-divider direction="vertical" />
           <el-link type="info" @click="router.push('/sys/login')">管理端入口</el-link>
         </div>

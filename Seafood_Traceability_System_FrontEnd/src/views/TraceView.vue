@@ -16,7 +16,7 @@
     <main class="trace-body">
       <el-card shadow="never" class="search-card">
         <h2>溯源码查询</h2>
-        <p class="tip">请输入对虾产品包装上的溯源标识码，例如：SHZ202601010001</p>
+        <p class="tip">请输入对虾产品包装上的溯源标识码（或产品编号），例如：SHZ202601010001</p>
         <div class="search-row">
           <el-input
             v-model="traceCode"

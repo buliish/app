@@ -1,5 +1,6 @@
 package com.gec.seafood_traceability_system.pojo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -17,7 +18,16 @@ public class ConfirmVO {
     /** 下游企业节点ID */
     private Integer downNodeId;
 
-    /** 下游企业名称 */
+    /**
+     * 下游企业（多对一：多条下游批号可能归属同一家企业）。
+     * <p>
+     * 由 Mapper XML 的 &lt;association&gt; 一次 JOIN 查出（不是 N+1 的嵌套子查询），
+     * 仅用于承载映射结果，不直接输出给前端——前端要的扁平字段见 downName。
+     */
+    @JsonIgnore
+    private NodeInfo downNode;
+
+    /** 下游企业名称（由 downNode.name 派生，维持前端原有契约不变） */
     private String downName;
 
     /** 下游企业产品批号 */

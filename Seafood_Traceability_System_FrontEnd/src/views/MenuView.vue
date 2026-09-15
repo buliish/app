@@ -5,9 +5,9 @@
   -->
   <div class="menu-page">
     <!-- 顶部标题栏：Logo + 系统名称居中 -->
-    <header class="menu-header">
-      <img :src="seafoodLogo" alt="logo" class="header-logo" />
-      <h1 class="header-title">冷冻对虾全产业链溯源系统</h1>
+    <header class="app-header">
+      <img :src="seafoodLogo" alt="logo" class="app-header-logo" />
+      <h1 class="app-header-title">冷冻对虾全产业链溯源系统</h1>
     </header>
 
     <main class="menu-body">
@@ -118,33 +118,8 @@ function handleMenuClick(item) {
 }
 
 /* 顶部标题栏 */
-.menu-header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  height: 56px;
-  padding: 0 16px;
-  background: linear-gradient(90deg, #0b4f8c 0%, #1d6fb8 100%);
-  border-bottom: 1px solid #0b4f8c;
-}
 
-.header-logo {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
-  border-radius: 6px;
-  background-color: #fff;
-  padding: 2px;
-}
 
-.header-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
-  letter-spacing: 1px;
-}
 
 /* 主体可滚动区 */
 .menu-body {
@@ -157,19 +132,7 @@ function handleMenuClick(item) {
 }
 
 /* banner */
-.banner-wrap {
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(11, 79, 140, 0.08);
-}
 
-.banner-img {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  display: block;
-}
 
 /* 企业信息 */
 .company-info {

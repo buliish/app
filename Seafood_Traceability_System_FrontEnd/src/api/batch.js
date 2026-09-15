@@ -40,4 +40,14 @@ export const confirmApi = (nodeType, id) => request.put(`/${prefixOf(nodeType)}/
 // 冷冻加工工序记录（清洗 / 分级 / 冷冻 / 包装）
 export const processListApi = (batchId) => request.get(`/froz/process/${batchId}`)
 export const processAddApi = (data) => request.post('/froz/process', data)
+// 批量新增工序：一次提交整套工序，后端走数据层批量插入
+export const processBatchAddApi = (list) => request.post('/froz/process/batch', list)
 export const processDeleteApi = (id) => request.delete(`/froz/process/${id}`)
+
+// 各环节检测记录（四个角色共用，用 stageType 区分批号表）
+export const inspectionListApi = (stageType, batchId) =>
+  request.get('/inspection/list', { params: { stageType, batchId } })
+export const inspectionAddApi = (data) => request.post('/inspection', data)
+// 批量新增：一次提交一份报告的多个检测项，后端走数据层批量插入
+export const inspectionBatchAddApi = (list) => request.post('/inspection/batch', list)
+export const inspectionDeleteApi = (id) => request.delete(`/inspection/${id}`)

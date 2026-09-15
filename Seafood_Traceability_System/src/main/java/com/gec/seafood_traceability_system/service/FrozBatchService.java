@@ -21,6 +21,14 @@ public interface FrozBatchService extends OwnedBatchService<FrozBatch> {
     List<ConfirmVO> listPendingConfirm(Integer frozNodeId, String downName);
 
     /**
+     * 按进场批号查下游待确认批号，并 JOIN 出下游企业（多对一，见 FrozBatchMapper.xml）
+     *
+     * @param upBatchNos 本企业已确认的产品批号，调用方保证非空
+     * @param downName   下游企业名称模糊条件，可为 null
+     */
+    List<ConfirmVO> listDownConfirm(List<String> upBatchNos, String downName);
+
+    /**
      * 确认下游企业进场（批发商批号状态 -> 已确认）
      *
      * @param wholBatchId 下游批发商批号主键

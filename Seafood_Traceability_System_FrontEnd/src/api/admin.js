@@ -22,3 +22,11 @@ export const adminNodeDeleteApi = (id) => request.delete(`/admin/node/${id}`)
 
 // 注册信息统计数据（可视化大屏）
 export const adminStatsApi = () => request.get('/admin/stats')
+
+// 批次追溯查询（管理端）
+export const adminTraceSearchApi = (keyword) =>
+  request.get('/admin/trace/search', { params: { keyword } })
+export const adminTraceChainApi = (keyword) =>
+  request.get('/admin/trace/chain', { params: { keyword } })
+export const adminTraceChainByIdApi = (id) => request.get(`/admin/trace/chain/${id}`)
+export const adminTraceStatsApi = () => request.get('/admin/trace/stats')

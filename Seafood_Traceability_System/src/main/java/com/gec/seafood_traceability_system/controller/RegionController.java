@@ -87,19 +87,37 @@ public class RegionController {
                     .eq(FarmBatch::getStatus, 2)
                     .orderByDesc(FarmBatch::getCreateTime)
                     .list()
-                    .forEach(b -> list.add(batchMap(b.getBatchNo(), b.getBreed(), b.getBreedStage(), null)));
+                    .forEach(b -> {
+                        Map<String, Object> m = batchMap(b.getBatchNo(), b.getBreed(), b.getBreedStage(), null);
+                        m.put("productForm", b.getProductForm());
+                        m.put("sourceType", b.getSourceType());
+                        list.add(m);
+                    });
             case 2 -> frozBatchService.lambdaQuery()
                     .eq(FrozBatch::getNodeId, nodeId)
                     .eq(FrozBatch::getStatus, 3)
                     .orderByDesc(FrozBatch::getCreateTime)
                     .list()
-                    .forEach(b -> list.add(batchMap(b.getBatchNo(), b.getBreed(), null, b.getProductType())));
+                    .forEach(b -> {
+                        Map<String, Object> m = batchMap(b.getBatchNo(), b.getBreed(), null, b.getProductType());
+                        // 形态与规格由加工环节定型，下游新建批号时带出并锁定
+                        m.put("productForm", b.getProductForm());
+                        m.put("specGrade", b.getSpecGrade());
+                        m.put("productCode", b.getProductCode());
+                        list.add(m);
+                    });
             case 3 -> wholBatchService.lambdaQuery()
                     .eq(WholBatch::getNodeId, nodeId)
                     .eq(WholBatch::getStatus, 3)
                     .orderByDesc(WholBatch::getCreateTime)
                     .list()
-                    .forEach(b -> list.add(batchMap(b.getBatchNo(), b.getBreed(), null, b.getProductType())));
+                    .forEach(b -> {
+                        Map<String, Object> m = batchMap(b.getBatchNo(), b.getBreed(), null, b.getProductType());
+                        m.put("productForm", b.getProductForm());
+                        m.put("specGrade", b.getSpecGrade());
+                        m.put("productCode", b.getProductCode());
+                        list.add(m);
+                    });
             default -> {
                 return Result.error("该企业类型没有上游批号");
             }

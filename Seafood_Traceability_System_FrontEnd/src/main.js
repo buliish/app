@@ -3,6 +3,8 @@ import ElementPlus from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
+// 主题变量与通用类，放在 Element Plus 之后引入，方便覆盖其默认值
+import './styles/theme.css'
 import App from './App.vue'
 import router from './router'
 

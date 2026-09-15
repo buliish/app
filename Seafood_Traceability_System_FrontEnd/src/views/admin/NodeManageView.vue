@@ -9,6 +9,12 @@
       <img :src="seafoodLogo" alt="冷冻对虾全产业链溯源系统" class="logo" />
       <h1>冷冻对虾全产业链溯源系统 · 节点企业注册信息管理</h1>
       <div class="header-actions">
+        <button type="button" class="header-dash" @click="router.push('/sys/trace')">
+          <span>批次追溯查询</span>
+        </button>
+        <button type="button" class="header-dash" @click="router.push('/sys/dashboard')">
+          <span>可视化大屏</span>
+        </button>
         <button
           type="button"
           class="header-logout"
@@ -90,7 +96,7 @@
             <el-pagination
               class="pager"
               background
-              layout="total, prev, pager, next"
+              layout="total, sizes, prev, pager, next"
               :total="total"
               :current-page="query.current"
               :page-size="query.size"
@@ -101,29 +107,9 @@
           </el-card>
         </div>
 
-        <!-- 右侧：统计图表 -->
+        <!-- 右侧：统计图表（抽为 StatsPanel 组件，与独立大屏共用同一套逻辑） -->
         <div class="admin-right">
-          <el-card shadow="never" class="chart-card">
-            <template #header><span class="section-title">近十二个月节点企业注册数量趋势</span></template>
-            <div ref="trendRef" class="chart chart-lg"></div>
-          </el-card>
-
-          <div class="chart-row">
-            <el-card shadow="never" class="chart-card">
-              <template #header><span class="section-title">按省分组注册数量分布</span></template>
-              <div ref="provPieRef" class="chart"></div>
-            </el-card>
-
-            <el-card shadow="never" class="chart-card">
-              <template #header><span class="section-title">按企业类型分组注册数量分布</span></template>
-              <div ref="typePieRef" class="chart"></div>
-            </el-card>
-          </div>
-
-          <el-card shadow="never" class="chart-card">
-            <template #header><span class="section-title">各省节点企业注册数量统计</span></template>
-            <div ref="provBarRef" class="chart chart-lg"></div>
-          </el-card>
+          <StatsPanel ref="statsPanelRef" theme="light" chart-height="200px" />
         </div>
       </div>
     </el-main>
@@ -172,6 +158,24 @@
         <el-form-item label="营业执照号" prop="businessId">
           <el-input v-model="form.businessId" placeholder="请输入营业执照编号" />
         </el-form-item>
+
+        <!--
+          行业许可证：按企业类型条件展示，与库表注释一致
+          （ep_id 养殖必填 / eia_id 养殖+加工 / cir_id 批发 / fb_id 批发+零售）
+        -->
+        <el-form-item v-if="showCert.ep" label="动物防疫条件合格证" prop="epId">
+          <el-input v-model="form.epId" placeholder="请输入动物防疫条件合格证编号" />
+        </el-form-item>
+        <el-form-item v-if="showCert.eia" label="环评资质证书" prop="eiaId">
+          <el-input v-model="form.eiaId" placeholder="请输入环境影响评价资质证书编号" />
+        </el-form-item>
+        <el-form-item v-if="showCert.cir" label="食品流通许可证" prop="cirId">
+          <el-input v-model="form.cirId" placeholder="请输入食品流通许可证编号" />
+        </el-form-item>
+        <el-form-item v-if="showCert.fb" label="食品经营许可证" prop="fbId">
+          <el-input v-model="form.fbId" placeholder="请输入食品经营许可证编号" />
+        </el-form-item>
+
         <el-form-item label="企业法人" prop="corporation">
           <el-input v-model="form.corporation" placeholder="请输入企业法人姓名" />
         </el-form-item>
@@ -194,18 +198,18 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref, nextTick, computed } from 'vue'
+import { onMounted, reactive, ref, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import * as echarts from 'echarts'
 import {
   adminNodeDeleteApi,
+  adminNodeDetailApi,
   adminNodePageApi,
   adminNodeSaveApi,
-  adminNodeUpdateApi,
-  adminStatsApi
+  adminNodeUpdateApi
 } from '../../api/admin'
 import { citiesApi, provincesApi } from '../../api/region'
+import StatsPanel from '../../components/StatsPanel.vue'
 import { TYPE_NAME, typeTagStyle } from '../../utils/nodeType'
 import seafoodLogo from '../../assets/images/海鲜.png'
 import logoutIcon from '../../assets/images/登出.png'
@@ -241,9 +245,24 @@ const form = reactive({
   cityId: null,
   address: '',
   businessId: '',
+  epId: '',
+  eiaId: '',
+  cirId: '',
+  fbId: '',
   corporation: '',
   telephone: '',
   regDate: ''
+})
+
+// 各证照按企业类型显隐（见库表 node_info 字段注释）
+const showCert = computed(() => {
+  const t = form.nodeType
+  return {
+    ep: t === 1,
+    eia: t === 1 || t === 2,
+    cir: t === 3,
+    fb: t === 3 || t === 4
+  }
 })
 
 const dialogTitle = computed(() => {
@@ -268,21 +287,21 @@ const formRules = {
   cityId: [{ required: true, message: '请选择所在市', trigger: 'change' }]
 }
 
+const statsPanelRef = ref()
+
 onMounted(async () => {
+  // 需求 3.2.8.1：初始化时同时填充"省下拉列表"与"市下拉列表"，且都不设初始选中项。
+  // 市列表一次性取全部（不带 provId），这样用户不选省也能直接按市模糊查询。
   try {
-    const res = await provincesApi()
-    provinces.value = res.data || []
+    const [provRes, cityRes] = await Promise.all([provincesApi(), citiesApi()])
+    provinces.value = provRes.data || []
+    cities.value = cityRes.data || []
   } catch (e) {
     provinces.value = []
+    cities.value = []
   }
   loadList()
-  loadStats()
-  window.addEventListener('resize', handleResize)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize)
-  ;[trendChart, provPieChart, typePieChart, provBarChart].forEach((c) => c && c.dispose())
+  // 图表加载、resize 监听与销毁由 StatsPanel 组件自行负责
 })
 
 async function loadList() {
@@ -325,16 +344,20 @@ function search() {
   loadList()
 }
 
-function resetQuery() {
+async function resetQuery() {
   Object.assign(query, { current: 1, name: '', type: null, provId: null, cityId: null })
-  cities.value = []
+  // 重置后市下拉要回到"全部市"，而不是留空
+  const res = await citiesApi()
+  cities.value = res.data || []
   loadList()
 }
 
+//选中省后把市下拉收窄到该省；清空省则恢复为全部市（初始化时已加载，无需再请求）
 async function onProvChange(provId) {
   query.cityId = null
   if (!provId) {
-    cities.value = []
+    const res = await citiesApi()
+    cities.value = res.data || []
     return
   }
   const res = await citiesApi(provId)
@@ -375,27 +398,43 @@ async function openDialog(mode, row) {
       cityId: null,
       address: '',
       businessId: '',
+      epId: '',
+      eiaId: '',
+      cirId: '',
+      fbId: '',
       corporation: '',
       telephone: '',
       regDate: new Date().toISOString().slice(0, 10)
     })
   } else {
+    // 详情/编辑都从后端取最新数据（需求 3.2.8.1：详情按钮应"查询当前节点企业信息"）
+    let d = row
+    try {
+      const res = await adminNodeDetailApi(row.nodeId)
+      if (res.data) d = res.data
+    } catch (e) {
+      // 详情接口异常时退回表格行数据，保证对话框仍可用
+    }
     Object.assign(form, {
-      nodeId: row.nodeId,
-      code: row.code,
+      nodeId: d.nodeId,
+      code: d.code,
       password: '',
-      name: row.name,
-      nodeType: row.nodeType,
-      provId: row.provId,
-      cityId: row.cityId,
-      address: row.address,
-      businessId: row.businessId,
-      corporation: row.corporation,
-      telephone: row.telephone,
-      regDate: row.regDate
+      name: d.name,
+      nodeType: d.nodeType,
+      provId: d.provId,
+      cityId: d.cityId,
+      address: d.address,
+      businessId: d.businessId,
+      epId: d.epId || '',
+      eiaId: d.eiaId || '',
+      cirId: d.cirId || '',
+      fbId: d.fbId || '',
+      corporation: d.corporation,
+      telephone: d.telephone,
+      regDate: d.regDate
     })
-    if (row.provId) {
-      const res = await citiesApi(row.provId)
+    if (d.provId) {
+      const res = await citiesApi(d.provId)
       formCities.value = res.data || []
     }
   }
@@ -428,7 +467,7 @@ function handleSave() {
       }
       dialogVisible.value = false
       loadList()
-      loadStats()
+      statsPanelRef.value && statsPanelRef.value.refresh()
     } finally {
       saving.value = false
     }
@@ -445,152 +484,9 @@ function handleDelete(row) {
       await adminNodeDeleteApi(row.nodeId)
       ElMessage.success('删除成功！')
       loadList()
-      loadStats()
+      statsPanelRef.value && statsPanelRef.value.refresh()
     })
     .catch(() => {})
-}
-
-// ========== 右侧：统计图表 ==========
-const stats = ref({ typeDist: [], provDist: [], trend: { months: [], counts: [] } })
-
-const trendRef = ref()
-const provPieRef = ref()
-const typePieRef = ref()
-const provBarRef = ref()
-
-let trendChart = null
-let provPieChart = null
-let typePieChart = null
-let provBarChart = null
-
-async function loadStats() {
-  const res = await adminStatsApi()
-  stats.value = res.data || {}
-  await nextTick()
-  renderCharts()
-}
-
-function handleResize() {
-  ;[trendChart, provPieChart, typePieChart, provBarChart].forEach((c) => c && c.resize())
-}
-
-// 折线图 / 柱状图 tooltip：同样限制在卡片内显示
-const axisTooltip = {
-  trigger: 'axis',
-  confine: true,
-  backgroundColor: 'rgba(255,255,255,0.98)',
-  borderColor: '#c9dcf2',
-  borderWidth: 1,
-  padding: [8, 12],
-  textStyle: { color: '#12315a', fontSize: 12 },
-  extraCssText: 'border-radius:8px;box-shadow:0 4px 14px rgba(11,79,140,0.18);'
-}
-
-// 汇总某项饼图数据的总数
-function sumOf(list) {
-  return (list || []).reduce((s, d) => s + Number(d.value || 0), 0)
-}
-
-// 饼图 tooltip：confine 保证浮层完整显示在卡片内不被裁剪，同时展示名称/数量/占比/总数
-function pieTooltip(totalOf) {
-  return {
-    trigger: 'item',
-    confine: true,
-    enterable: true,
-    backgroundColor: 'rgba(255,255,255,0.98)',
-    borderColor: '#c9dcf2',
-    borderWidth: 1,
-    padding: [8, 12],
-    textStyle: { color: '#12315a', fontSize: 12 },
-    extraCssText: 'border-radius:8px;box-shadow:0 4px 14px rgba(11,79,140,0.18);max-width:220px;white-space:normal;',
-    formatter: (p) => {
-      const total = sumOf(totalOf()) || 1
-      const percent = ((Number(p.value) / total) * 100).toFixed(1)
-      return `<div style="font-weight:600;margin-bottom:4px">${p.name}</div>
-        <div>注册数量：<span style="font-weight:600;color:#0b4f8c">${p.value}</span> 家</div>
-        <div>所占比例：<span style="font-weight:600;color:#0b4f8c">${percent}%</span>（${p.value} / ${total} 家）</div>`
-    }
-  }
-}
-
-function renderCharts() {
-  const trend = stats.value.trend || { months: [], counts: [] }
-
-  // 1）注册数量趋势折线图
-  trendChart = trendChart || echarts.init(trendRef.value)
-  trendChart.setOption({
-    tooltip: axisTooltip,
-    grid: { left: 45, right: 20, top: 30, bottom: 40 },
-    xAxis: { type: 'category', data: trend.months, axisLabel: { rotate: 40 } },
-    yAxis: { type: 'value', name: '注册数量', minInterval: 1 },
-    series: [
-      {
-        name: '注册数量',
-        type: 'line',
-        smooth: true,
-        symbolSize: 6,
-        data: trend.counts,
-        itemStyle: { color: '#1d6fb8' },
-        areaStyle: { color: 'rgba(29,111,184,0.15)' }
-      }
-    ]
-  })
-
-  // 2）省分组注册数量分布饼图
-  provPieChart = provPieChart || echarts.init(provPieRef.value)
-  provPieChart.setOption({
-    tooltip: pieTooltip(() => stats.value.provDist),
-    legend: { bottom: 0, type: 'scroll', itemWidth: 10, itemHeight: 10 },
-    series: [
-      {
-        name: '省分布',
-        type: 'pie',
-        radius: ['35%', '60%'],
-        center: ['50%', '45%'],
-        avoidLabelOverlap: true,
-        label: { formatter: '{b}\n{c} 家', fontSize: 11 },
-        data: stats.value.provDist || []
-      }
-    ]
-  })
-
-  // 3）企业类型分组注册数量分布饼图
-  typePieChart = typePieChart || echarts.init(typePieRef.value)
-  typePieChart.setOption({
-    tooltip: pieTooltip(() => stats.value.typeDist),
-    legend: { bottom: 0, itemWidth: 10, itemHeight: 10 },
-    color: ['#0f9d58', '#e8a33d', '#1d6fb8', '#8e44ad'],
-    series: [
-      {
-        name: '类型分布',
-        type: 'pie',
-        radius: '55%',
-        center: ['50%', '45%'],
-        label: { formatter: '{b}: {c}', fontSize: 11 },
-        data: stats.value.typeDist || []
-      }
-    ]
-  })
-
-  // 4）各省注册数量柱状图
-  const provBar = stats.value.provBar || []
-  provBarChart = provBarChart || echarts.init(provBarRef.value)
-  provBarChart.setOption({
-    tooltip: axisTooltip,
-    grid: { left: 45, right: 20, top: 30, bottom: 50 },
-    xAxis: { type: 'category', data: provBar.map((d) => d.name), axisLabel: { rotate: 30, fontSize: 11 } },
-    yAxis: { type: 'value', name: '注册数量', minInterval: 1 },
-    series: [
-      {
-        name: '注册数量',
-        type: 'bar',
-        barWidth: '45%',
-        itemStyle: { color: '#0f9d58', borderRadius: [4, 4, 0, 0] },
-        label: { show: true, position: 'top', fontSize: 11 },
-        data: provBar.map((d) => d.value)
-      }
-    ]
-  })
 }
 
 function handleLogout() {
@@ -648,6 +544,26 @@ function handleLogout() {
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+/* 进入可视化大屏的入口按钮 */
+.header-dash {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: #3adc9a;
+  border: 1px solid #3adc9a;
+  border-radius: 6px;
+  color: #06281a;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.header-dash:hover {
+  background: #2cc487;
+  border-color: #2cc487;
 }
 
 .header-logout:hover {
@@ -724,53 +640,8 @@ function handleLogout() {
   justify-content: flex-end;
 }
 
-/* 右侧统计图表 */
-.chart-card {
-  margin-top: 14px;
-  border-radius: 12px;
-}
-
-/* 第一张图与左侧卡片顶部对齐 */
-.admin-right > .chart-card:first-child {
-  margin-top: 0;
-}
-
-.chart-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #0b4f8c;
-}
-
-.chart {
-  height: 240px;
-  width: 100%;
-}
-
-.chart-lg {
-  height: 260px;
-}
-
-/* 右列最后一张图撑满剩余高度，使左右两列底部齐平 */
-.admin-right > .chart-card:last-child {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.admin-right > .chart-card:last-child :deep(.el-card__body) {
-  flex: 1 1 auto;
-  display: flex;
-}
-
-.admin-right > .chart-card:last-child .chart {
-  flex: 1 1 auto;
-  height: auto;
-  min-height: 220px;
-}
+/*
+ * 右侧统计图表（.chart-card / .chart 等）的样式已随图表逻辑一并移入
+ * StatsPanel.vue，这里不再保留，避免出现指向已不存在元素的选择器。
+ */
 </style>
