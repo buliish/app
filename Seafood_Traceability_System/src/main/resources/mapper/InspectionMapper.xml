@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  检测记录 Mapper —— 数据层批量操作
+  单表增删改查仍由 MyBatis-Plus BaseMapper 自动生成。
+-->
+<mapper namespace="com.gec.seafood_traceability_system.mapper.InspectionMapper">
+
+    <!--
+      批量新增检测记录。
+      一份检测报告通常包含多个检测项（如 氯霉素 / 孔雀石绿 / 恩诺沙星 …），
+      前端一次性提交整份报告，这里用 foreach 拼多值 INSERT 一次写完。
+
+      整批结论、报告编号、检测机构等字段是整份报告共用的，
+      调用方会为每条记录补齐同样的值。
+    -->
+    <insert id="insertBatch" useGeneratedKeys="true" keyProperty="inspectionId">
+        INSERT INTO inspection_record
+            (stage_type, batch_id, node_id, item_name, item_value, standard_value,
+             result, conclusion, report_no, org_name, inspector, inspect_date,
+             remark, create_time, update_time)
+        VALUES
+        <foreach collection="records" item="r" separator=",">
+            (#{r.stageType}, #{r.batchId}, #{r.nodeId}, #{r.itemName}, #{r.itemValue},
+             #{r.standardValue}, #{r.result}, #{r.conclusion}, #{r.reportNo},
+             #{r.orgName}, #{r.inspector}, #{r.inspectDate}, #{r.remark},
+             #{r.createTime}, #{r.updateTime})
+        </foreach>
+    </insert>
+
+</mapper>

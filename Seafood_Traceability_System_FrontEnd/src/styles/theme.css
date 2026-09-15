@@ -1,0 +1,119 @@
+/*
+  全局主题变量与通用样式。
+  在 Element Plus 样式之后引入（见 main.js），因此这里可以对它的默认值做覆盖。
+
+  约定：品牌色统一走 CSS 变量，页面里不要再写死 #1d6fb8 这类字面值，
+  换主题时只改这一处。
+*/
+
+:root {
+  /* 主色：页面头部渐变、主按钮、链接、选中态 */
+  --brand-primary: #1d6fb8;
+  --brand-primary-dark: #0b4f8c;
+  --brand-gradient: linear-gradient(90deg, #0b4f8c 0%, #1d6fb8 100%);
+
+  /* 四类节点的专属色，与后端 node_info.type 一一对应 */
+  --type-farm: #0f9d58;
+  --type-froz: #e8a33d;
+  --type-whol: #1d6fb8;
+  --type-reta: #8e44ad;
+
+  /* 质量状态色，与 QualityTag 的 el-tag type 呼应 */
+  --quality-pending: #909399;
+  --quality-passed: #0f9d58;
+  --quality-rejected: #f56c6c;
+
+  /* 文本与分隔线 */
+  --text-main: #303133;
+  --text-sub: #606266;
+  --text-muted: #909399;
+  --border-base: #dcdfe6;
+  --border-light: #e4e7ed;
+  --bg-page: #f0f2f5;
+}
+
+/* 覆盖 Element Plus 的主色，使按钮/链接/选中态与本系统品牌色一致 */
+:root {
+  --el-color-primary: #1d6fb8;
+  --el-color-primary-light-3: #5093cd;
+  --el-color-primary-light-5: #7cb0dc;
+  --el-color-primary-light-7: #a9cdea;
+  --el-color-primary-light-8: #bfd9f0;
+  --el-color-primary-light-9: #d6e6f6;
+  --el-color-primary-dark-2: #0b4f8c;
+}
+
+/* 基础重置：各页面不再重复声明 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  font-family: 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text-main);
+  background-color: var(--bg-page);
+}
+
+a {
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+
+/* 细滚动条，避免页面内滚动区域出现粗黑条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c8cdd4;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8afb8;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/*
+  通用页面头部：流通节点端各页共用同一套品牌头部，
+  放在全局是因为它不随组件作用域变化。
+*/
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 16px;
+  background: var(--brand-gradient);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.app-header .app-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+/* 内容区最大宽度：手机端页面统一居中，避免宽屏下被拉伸 */
+.page-body {
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* 空状态统一留白 */
+.el-empty {
+  padding: 24px 0;
+}
