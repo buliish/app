@@ -66,12 +66,11 @@ public class FarmBatchServiceImpl extends ServiceImpl<FarmBatchMapper, FarmBatch
         if (upBatchNos.isEmpty()) {
             return new ArrayList<>();
         }
-        //2.下游批号 + 所属企业一次 JOIN 查出（多对一），名称模糊匹配也下推到 SQL，
-        //  不再用 listByIds + Map 手工补名、再到内存里过滤
-        List<ConfirmVO> result = frozBatchService.listDownConfirm(upBatchNos, downName);
-        // 关联映射把企业塞在 downNode 里，这里派生出前端契约字段 downName
-        result.forEach(vo -> vo.setDownName(vo.getDownNode() == null ? null : vo.getDownNode().getName()));
-        return result;
+        //2.养殖企业的下游是加工企业，而 FrozBatchService.listDownConfirm 查的正是
+        //  froz_batch 表（见 FrozBatchMapper.xml），因此直接委托给它。
+        //  统一约定：**每个环节的 listDownConfirm 只查它自己那张批号表**，
+        //  listPendingConfirm 负责"委托给下游环节的 Service"。
+        return frozBatchService.listDownConfirm(upBatchNos, downName);
     }
 
     @Override

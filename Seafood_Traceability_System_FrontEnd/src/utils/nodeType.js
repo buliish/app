@@ -79,6 +79,10 @@ export function qualityTagType(status) {
 // 检测项目候选（检测记录录入用）
 export const INSPECT_ITEMS = ['感官', '菌落总数', '大肠菌群', '氯霉素', '重金属镉', '水分']
 
+// 注意：不往数据库存图片路径。前端源码路径（/src/assets/...）在开发模式由
+// Vite 处理、构建后又会变成 /assets/xxx-hash.png，存进库里必然有一边失效。
+// 因此 image_url 留空，由组件按 import 结果兜底选图。
+
 // 单项判定 / 整批结论
 export const JUDGE_RESULTS = { 1: '合格', 2: '不合格' }
 

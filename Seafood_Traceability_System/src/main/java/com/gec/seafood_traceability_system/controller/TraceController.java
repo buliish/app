@@ -75,17 +75,24 @@ public class TraceController {
      * 生成溯源二维码（PNG 图片流）。
      * <p>
      * 供页面 &lt;img src&gt; 直接引用与下载；/trace/** 免登录，消费者扫码即可查看。
+     * <p>
+     * 这里用 {@link TraceService#existsCode} 而不是 {@code trace()} 做校验：
+     * {@code trace()} 对已下架批号会抛异常，导致 &lt;img&gt; 拿到一段 JSON 而显示成
+     * 破图。二维码的语义只是"把编号印出来"，不该受上下架状态影响 ——
+     * 能否看到内容由扫码后的 {@code /trace/{code}} 自己决定。
      */
-    @GetMapping(value = "/qrcode/{traceCode}", produces = MediaType.IMAGE_PNG_VALUE)
-    public byte[] qrcode(
-            @PathVariable
-            @Pattern(regexp = "^[A-Za-z0-9]{6,50}$", message = "溯源标识码格式不正确")
-            String traceCode) throws Exception {
-        // 先确认该溯源标识码真实存在，避免为任意字符串生成二维码
-        if (traceService.trace(traceCode) == null) {
-            throw new BizException("溯源标识码不存在");
+    @GetMapping(value = "/qrcode/{code}", produces = MediaType.IMAGE_PNG_VALUE)
+    public byte[] qrcode(@PathVariable String code) throws Exception {
+        // 注意：这里刻意不用 @Pattern 校验、也不抛业务异常。
+        // 本接口由页面的 <img src> 直接引用，一旦抛异常就会返回 JSON，
+        // 浏览器把它当图片解析 -> 破图，用户看不懂发生了什么。
+        // 因此所有"出不了码"的情况统一返回占位图，保证响应永远是合法 PNG。
+        String normalized = code == null ? "" : code.trim();
+        boolean validFormat = normalized.matches("^[A-Za-z0-9]{6,50}$");
+        if (!validFormat || !traceService.existsCode(normalized)) {
+            return QrCodeUtil.placeholderPng(qrSize);
         }
-        return QrCodeUtil.toPng(qrBaseUrl + traceCode, qrSize);
+        return QrCodeUtil.toPng(qrBaseUrl + normalized, qrSize);
     }
 
     /** 溯源标识码只允许字母数字，长度 6~50，避免超长串直接打到数据库 */

@@ -82,6 +82,15 @@ public class TraceServiceImpl implements TraceService {
         return data;
     }
 
+    @Override
+    public boolean existsCode(String code) {
+        if (code == null || code.isBlank()) {
+            return false;
+        }
+        // 只看存在性，不看 status —— 已下架批号的二维码仍应能生成
+        return findByCodeOrProductCode(code.trim()) != null;
+    }
+
     /** 先按溯源码查，再退回按对外产品编号查（消费者可能输的是包装上的产品编号） */
     private RetaBatch findByCodeOrProductCode(String code) {
         RetaBatch reta = retaBatchService.lambdaQuery()

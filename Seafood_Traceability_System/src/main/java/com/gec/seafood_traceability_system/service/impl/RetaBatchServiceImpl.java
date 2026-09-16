@@ -3,6 +3,7 @@ package com.gec.seafood_traceability_system.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.gec.seafood_traceability_system.mapper.RetaBatchMapper;
 import com.gec.seafood_traceability_system.pojo.BizException;
+import com.gec.seafood_traceability_system.pojo.ConfirmVO;
 import com.gec.seafood_traceability_system.pojo.RetaBatch;
 import com.gec.seafood_traceability_system.service.RetaBatchService;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -35,6 +37,24 @@ public class RetaBatchServiceImpl extends ServiceImpl<RetaBatchMapper, RetaBatch
     @Override
     public boolean existsBatchNo(String batchNo) {
         return lambdaQuery().eq(RetaBatch::getBatchNo, batchNo).count() > 0;
+    }
+
+    /**
+     * 下游待确认批号查询。
+     * <p>
+     * 零售是链路末端，本方法对零售自身不产生"下游确认"语义；
+     * 它存在是因为批发商环节需要查 reta_batch，通过本 Service 委托过来，
+     * 从而保证"每个环节查自己的下游表"这一对称结构。
+     */
+    @Override
+    public List<ConfirmVO> listDownConfirm(List<String> upBatchNos, String downName) {
+        if (upBatchNos == null || upBatchNos.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<ConfirmVO> result = baseMapper.selectDownConfirmList(upBatchNos, downName);
+        // 关联映射把企业塞在 downNode 里，这里派生出前端契约字段 downName
+        result.forEach(vo -> vo.setDownName(vo.getDownNode() == null ? null : vo.getDownNode().getName()));
+        return result;
     }
 
     @Override

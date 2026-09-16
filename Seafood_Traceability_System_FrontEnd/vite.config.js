@@ -11,9 +11,14 @@ import vue from '@vitejs/plugin-vue'
 //   /region  省市区与上游企业联动
 //   /trace   消费者溯源查询
 //   /admin   系统管理端
+//   /inspection 各环节检测记录（四个角色共用，用 stageType 区分批号表）
+//
+// 注意：后端新增接口前缀时，这里必须同步添加。否则浏览器请求会打到 Vite
+// 自己身上、返回 index.html（200），前端解析 JSON 失败并提示“操作失败”，
+// 而后端日志里看不到任何请求 —— 这类问题最容易误判成后端故障。
 const target = 'http://localhost:8080'
 const proxy = {}
-;['/user', '/farm', '/froz', '/whol', '/reta', '/region', '/trace', '/admin'].forEach((prefix) => {
+;['/user', '/farm', '/froz', '/whol', '/reta', '/region', '/trace', '/admin', '/inspection'].forEach((prefix) => {
   proxy[prefix] = {
     target,
     changeOrigin: true
