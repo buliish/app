@@ -1,0 +1,96 @@
+/*
+  全局主题变量
+  ------------------------------------------------------------------
+  收敛前：品牌色 #0b4f8c / #1d6fb8 在各页面里手写散落（分别出现 33 / 27 次），
+          同一条主渐变被复制了 11 遍，改一次配色要满仓库搜替换。
+  收敛后：颜色、渐变、圆角、阴影统一在这里定义，页面只引用变量。
+*/
+:root {
+  /* 品牌主色 */
+  --c-primary: #0b4f8c;
+  --c-primary-light: #1d6fb8;
+  --c-primary-lighter: #e8f1f9;
+
+  /* 顶部标题栏：所有业务页共用同一条渐变 */
+  --grad-header: linear-gradient(90deg, #0b4f8c 0%, #1d6fb8 100%);
+
+  /* 文字 */
+  --c-text: #303133;
+  --c-text-sub: #606266;
+  --c-text-muted: #909399;
+  --c-border: #dcdfe6;
+
+  /* 背景 */
+  --c-bg: #f7f9fc;
+  --c-bg-page: #f0f4f8;
+  --c-white: #fff;
+
+  /* 圆角 */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+
+  /* 阴影 */
+  --sh-card: 0 2px 12px rgba(11, 79, 140, 0.06);
+  --sh-raised: 0 4px 12px rgba(11, 79, 140, 0.08);
+  --sh-float: 0 8px 28px rgba(11, 79, 140, 0.18);
+
+  /* 布局 */
+  --h-header: 56px;
+}
+
+/*
+  通用顶部标题栏
+  7 个业务页原本各自复制了同一段样式（flex 居中 + 高 56px + 主渐变 + 底边框），
+  这里抽成单一事实来源；组件的 scoped 样式无法穿透到页面，
+  因此以全局类提供，页面直接 <header class="app-header"> 即可。
+*/
+.app-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: var(--h-header);
+  padding: 0 16px;
+  background: var(--grad-header);
+  border-bottom: 1px solid var(--c-primary);
+  color: var(--c-white);
+}
+
+/* 标题栏内的 Logo 与标题（尺寸全站统一） */
+.app-header .app-header-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: var(--r-sm);
+  background-color: var(--c-white);
+  padding: 2px;
+}
+
+.app-header .app-header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--c-white);
+  letter-spacing: 1px;
+}
+
+/*
+  通用横幅大图
+  7 个业务页同样各抄了一份（圆角 12 + 溢出隐藏 + 主色阴影 + 封面裁切）。
+  统一后页面只需 <div class="banner-wrap"><img class="banner-img" ...></div>。
+*/
+.banner-wrap {
+  width: 100%;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--sh-raised);
+}
+
+.banner-img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}

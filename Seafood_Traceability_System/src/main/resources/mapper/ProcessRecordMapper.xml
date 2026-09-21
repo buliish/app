@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  冷冻加工工序记录：数据层批量操作
+  一条加工批号往往要一次录入整套工序（清洗/分级/冷冻/包装），
+  用 foreach 拼成单条多值 INSERT，避免 N 次数据库往返。
+-->
+<mapper namespace="com.gec.seafood_traceability_system.mapper.ProcessRecordMapper">
+
+    <insert id="insertBatch">
+        INSERT INTO process_record
+        (froz_batch_id, node_id, step, step_time, temperature, operator, remark)
+        VALUES
+        <foreach collection="records" item="r" separator=",">
+            (#{r.frozBatchId}, #{r.nodeId}, #{r.step}, #{r.stepTime},
+             #{r.temperature}, #{r.operator}, #{r.remark})
+        </foreach>
+    </insert>
+
+</mapper>

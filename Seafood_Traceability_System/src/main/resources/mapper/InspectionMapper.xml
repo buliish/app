@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  各环节检测记录：数据层批量操作 + 多态关联查询
+
+  检测记录与批号是"多对一"关系（多条检测项归属一个批号），但批号有四种，
+  由 stage_type 决定 batch_id 指向哪张表，因此不能靠外键，改用
+  (stage_type, batch_id) 的元组条件做多态关联。
+-->
+<mapper namespace="com.gec.seafood_traceability_system.mapper.InspectionMapper">
+
+    <resultMap id="BaseMap" type="com.gec.seafood_traceability_system.pojo.Inspection">
+        <id property="inspectionId" column="inspection_id"/>
+        <result property="nodeId" column="node_id"/>
+        <result property="stageType" column="stage_type"/>
+        <result property="batchId" column="batch_id"/>
+        <result property="batchNo" column="batch_no"/>
+        <result property="itemName" column="item_name"/>
+        <result property="itemValue" column="item_value"/>
+        <result property="standardValue" column="standard_value"/>
+        <result property="result" column="result"/>
+        <result property="conclusion" column="conclusion"/>
+        <result property="reportNo" column="report_no"/>
+        <result property="orgName" column="org_name"/>
+        <result property="inspector" column="inspector"/>
+        <result property="inspectDate" column="inspect_date"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <!-- 批量新增：一条批号常要一次录入整套检测项，foreach 拼多值 INSERT -->
+    <insert id="insertBatch">
+        INSERT INTO inspection
+        (node_id, stage_type, batch_id, batch_no, item_name, item_value, standard_value,
+         result, conclusion, report_no, org_name, inspector, inspect_date, remark, create_time)
+        VALUES
+        <foreach collection="records" item="r" separator=",">
+            (#{r.nodeId}, #{r.stageType}, #{r.batchId}, #{r.batchNo}, #{r.itemName},
+             #{r.itemValue}, #{r.standardValue}, #{r.result}, #{r.conclusion},
+             #{r.reportNo}, #{r.orgName}, #{r.inspector}, #{r.inspectDate},
+             #{r.remark}, #{r.createTime})
+        </foreach>
+    </insert>
+
+    <!--
+      一次取回整条溯源链上的全部检测记录。
+      用 OR 元组条件匹配 (stage_type, batch_id)，一条链最多 4 个环节，
+      params 数量可控；按环节+报告号排序，前端可按报告号直接分组。
+    -->
+    <select id="selectByRefs" resultMap="BaseMap">
+        SELECT * FROM inspection
+        WHERE
+        <foreach collection="refs" item="ref" separator=" OR ">
+            (stage_type = #{ref.stageType} AND batch_id = #{ref.batchId})
+        </foreach>
+        ORDER BY stage_type ASC, report_no ASC, inspection_id ASC
+    </select>
+
+</mapper>

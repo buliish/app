@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  冷冻加工企业产品批号：关联映射
+  多对一：多条冷冻加工批号（froz_batch）可能归属同一家下游企业（node_info），
+         这里用 JOIN + <association> 一次查出，替代原先的
+         listByIds + Map 手工拼装（既少一次查询，也避免了手写补名逻辑）。
+-->
+<mapper namespace="com.gec.seafood_traceability_system.mapper.FrozBatchMapper">
+
+    <!-- 确认列表结果映射：批号字段 + 多对一嵌套的下游企业 -->
+    <resultMap id="DownConfirmMap" type="com.gec.seafood_traceability_system.pojo.ConfirmVO">
+        <id property="id" column="froz_batch_id"/>
+        <result property="downNodeId" column="node_id"/>
+        <result property="downBatchNo" column="batch_no"/>
+        <result property="upBatchNo" column="up_batch_no"/>
+        <result property="breed" column="breed"/>
+        <result property="productType" column="product_type"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="create_time"/>
+
+        <!-- 多对一：一个下游企业对应多条下游批号 -->
+        <association property="downNode" javaType="com.gec.seafood_traceability_system.pojo.NodeInfo">
+            <id property="nodeId" column="n_node_id"/>
+            <result property="name" column="n_name"/>
+            <result property="code" column="n_code"/>
+            <result property="address" column="n_address"/>
+            <result property="corporation" column="n_corporation"/>
+            <result property="telephone" column="n_telephone"/>
+            <result property="businessId" column="n_business_id"/>
+        </association>
+    </resultMap>
+
+    <!--
+      下游进场确认列表
+      以"本企业已确认的批号"为进场批号的下游待确认批号，JOIN 出下游企业信息
+    -->
+    <select id="selectDownConfirmList" resultMap="DownConfirmMap">
+        SELECT b.froz_batch_id,
+               b.node_id,
+               b.batch_no,
+               b.up_batch_no,
+               b.breed,
+               b.product_type,
+               b.status,
+               b.create_time,
+               n.node_id      AS n_node_id,
+               n.name         AS n_name,
+               n.code         AS n_code,
+               n.address      AS n_address,
+               n.corporation  AS n_corporation,
+               n.telephone    AS n_telephone,
+               n.business_id  AS n_business_id
+        FROM froz_batch b
+                 LEFT JOIN node_info n ON n.node_id = b.node_id
+        WHERE b.status = 2
+          AND b.up_batch_no IN
+        <foreach collection="upBatchNos" item="no" open="(" separator="," close=")">
+            #{no}
+        </foreach>
+        <if test="downName != null and downName != ''">
+            AND n.name LIKE CONCAT('%', #{downName}, '%')
+        </if>
+        ORDER BY b.create_time DESC
+    </select>
+
+</mapper>
