@@ -67,7 +67,7 @@ public class FrozBatchController {
         batch.setStatus(1);
         batch.setCreateTime(LocalDateTime.now());
         batch.setUpdateTime(LocalDateTime.now());
-        frozBatchService.save(batch);
+        frozBatchService.saveWithQuantityCheck(batch);
         return Result.success();
     }
 
@@ -79,7 +79,7 @@ public class FrozBatchController {
         batch.setNodeId(currentNodeId());
         batch.setStatus(Boolean.TRUE.equals(sendConfirm) ? 2 : 1);
         batch.setUpdateTime(LocalDateTime.now());
-        frozBatchService.updateById(batch);
+        frozBatchService.updateWithQuantityCheck(batch);
         return Result.success();
     }
 

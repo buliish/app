@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.gec.seafood_traceability_system.service.BatchQuantityService;
 
 /**
  * 批发商产品批号业务实现
@@ -25,6 +26,10 @@ import java.util.stream.Collectors;
  */
 @Service
 public class WholBatchServiceImpl extends ServiceImpl<WholBatchMapper, WholBatch> implements WholBatchService {
+
+    /** 领用量校验（含悲观锁），与落库同事务 */
+    @Autowired
+    private BatchQuantityService batchQuantityService;
 
     @Autowired
     private NodeInfoService nodeInfoService;
@@ -103,5 +108,23 @@ public class WholBatchServiceImpl extends ServiceImpl<WholBatchMapper, WholBatch
         }
         //确认零售商进场：批号置为已确认，同时系统生成溯源标识码
         return retaBatchService.confirmBatch(retaBatchId) != null;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveWithQuantityCheck(WholBatch batch) {
+        batchQuantityService.assertCanTake(BatchQuantityService.STAGE_WHOL,
+                batch.getUpBatchNo(), batch.getUpNodeId(), batch.getUpQuantityKg());
+        save(batch);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateWithQuantityCheck(WholBatch batch) {
+        // 排除自身已占用的额度，否则"把 800kg 改成 1200kg"会被误判超领
+        batchQuantityService.assertCanTake(BatchQuantityService.STAGE_WHOL,
+                batch.getUpBatchNo(), batch.getUpNodeId(), batch.getUpQuantityKg(),
+                batch.getWholBatchId());
+        return updateById(batch);
     }
 }

@@ -59,7 +59,7 @@ public class RetaBatchController {
         batch.setStatus(1);
         batch.setCreateTime(LocalDateTime.now());
         batch.setUpdateTime(LocalDateTime.now());
-        retaBatchService.save(batch);
+        retaBatchService.saveWithQuantityCheck(batch);
         return Result.success();
     }
 
@@ -81,7 +81,7 @@ public class RetaBatchController {
         batch.setUpdateTime(LocalDateTime.now());
         //批号更新不允许修改溯源标识码
         batch.setTraceCode(null);
-        retaBatchService.updateById(batch);
+        retaBatchService.updateWithQuantityCheck(batch);
         return Result.success();
     }
 

@@ -111,6 +111,36 @@
             <el-table-column prop="remark" label="备注" min-width="180" />
           </el-table>
         </el-card>
+
+        <!--
+          同源产品：与本商品出自同一个养殖批号的其他商品。
+          一批虾可以同时被加工成虾滑、虾丸、冷冻整虾，消费者扫其中一件时
+          应该知道"这批虾还做成了什么"，点卡片可跳到那件商品。
+          数据来自后端 relatedProducts —— 只含零售层的公开信息，
+          中间环节（谁加工的、谁批发的）属于管理端视野，不在这里暴露。
+        -->
+        <el-card v-if="(data.relatedProducts || []).length" shadow="never" class="pd-card">
+          <template #header>
+            <span class="pd-title">同源产品（这批虾还做成了）</span>
+          </template>
+          <div class="related-grid">
+            <div
+              v-for="item in data.relatedProducts"
+              :key="item.retaBatchId"
+              class="related-card"
+              @click="openRelated(item)"
+            >
+              <div class="related-head">
+                <span class="related-type">{{ item.productType || '—' }}</span>
+                <QualityTag :status="item.qualityStatus" />
+              </div>
+              <p class="related-line">品种：{{ item.breed || '—' }}</p>
+              <p class="related-line" v-if="item.productForm">形态：{{ item.productForm }}</p>
+              <p class="related-line muted">{{ item.retailerName || '—' }}</p>
+              <p class="related-code">{{ item.traceCode || item.batchNo }}</p>
+            </div>
+          </div>
+        </el-card>
       </template>
 
       <el-empty v-else-if="!loading" description="未找到该产品，请核对编码后重试" />
@@ -169,6 +199,19 @@ const nodeRows = computed(() => {
 
 function fmt(t) {
   return String(t || '').replace('T', ' ')
+}
+
+/**
+ * 跳到同源商品。
+ * 路由参数要同时兼容对外产品编号与溯源码 —— 前者可能为空（老数据没填），
+ * 所以按"产品编号优先、没有就用溯源码"的顺序取。
+ */
+function openRelated(item) {
+  const code = item.traceCode || item.batchNo
+  if (!code) {
+    return
+  }
+  router.push(`/product/${encodeURIComponent(code)}`)
 }
 
 onMounted(async () => {
@@ -327,5 +370,57 @@ onMounted(async () => {
   .quality-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* 同源产品卡片组 */
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.related-card {
+  border: 1px solid var(--c-border, #e4e7ed);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.related-card:hover {
+  border-color: #1d6fb8;
+  box-shadow: 0 4px 14px rgba(11, 79, 140, 0.12);
+}
+
+.related-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.related-type {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.related-line {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--c-text-sub);
+}
+
+.related-line.muted {
+  color: #909399;
+}
+
+.related-code {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #1d6fb8;
+  word-break: break-all;
 }
 </style>

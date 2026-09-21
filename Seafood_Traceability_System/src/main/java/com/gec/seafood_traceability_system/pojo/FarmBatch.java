@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -43,6 +44,15 @@ public class FarmBatch implements NodeOwned {
      * 而 Lombok 会为新字段生成 getStatus() 覆盖默认方法，导致状态校验静默失效。
      */
     private Integer qualityStatus;
+
+    /**
+     * 本批出场量（kg）。
+     * <p>
+     * 养殖是链头，没有"领用量"；这个数是下游分批领用的总额度 ——
+     * 下游各批号的 up_quantity_kg 之和不得超过它。
+     * 为 null 表示未登记数量，此时不做超领校验（兼容历史数据）。
+     */
+    private BigDecimal quantityKg;
 
     /** 动物检验检疫合格证 */
     private String quarantineNo;

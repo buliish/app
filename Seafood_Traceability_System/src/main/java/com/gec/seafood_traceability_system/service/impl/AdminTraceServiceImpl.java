@@ -1,5 +1,6 @@
 package com.gec.seafood_traceability_system.service.impl;
 
+import com.gec.seafood_traceability_system.pojo.ChainTreeNode;
 import com.gec.seafood_traceability_system.pojo.FarmBatch;
 import com.gec.seafood_traceability_system.pojo.FrozBatch;
 import com.gec.seafood_traceability_system.pojo.Inspection;
@@ -239,5 +240,17 @@ public class AdminTraceServiceImpl implements AdminTraceService {
         m.put("pass", pass);
         m.put("rate", total == 0 ? 0 : Math.round(pass * 1000.0 / total) / 10.0);
         return m;
+    }
+
+    /**
+     * 完整产业链树。
+     * <p>
+     * 走查逻辑完全委托给 {@link TraceChainLoader#loadTreeByRetaBatchId}，
+     * 与消费者端"同源产品"用的是同一份树 —— 区别只在两端各取所需：
+     * 消费者只读零售叶子，管理端要看到中间每一级的归属与质量状态。
+     */
+    @Override
+    public ChainTreeNode treeByRetaBatchId(Integer retaBatchId) {
+        return traceChainLoader.loadTreeByRetaBatchId(retaBatchId);
     }
 }

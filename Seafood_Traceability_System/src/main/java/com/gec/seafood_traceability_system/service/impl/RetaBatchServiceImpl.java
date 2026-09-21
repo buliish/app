@@ -6,6 +6,7 @@ import com.gec.seafood_traceability_system.pojo.BizException;
 import com.gec.seafood_traceability_system.pojo.ConfirmVO;
 import com.gec.seafood_traceability_system.pojo.RetaBatch;
 import com.gec.seafood_traceability_system.service.RetaBatchService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -16,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import com.gec.seafood_traceability_system.service.BatchQuantityService;
 
 /**
  * 零售商产品批号业务实现
@@ -23,6 +25,10 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 @Service
 public class RetaBatchServiceImpl extends ServiceImpl<RetaBatchMapper, RetaBatch> implements RetaBatchService {
+
+    /** 领用量校验（含悲观锁），与落库同事务 */
+    @Autowired
+    private BatchQuantityService batchQuantityService;
 
     @Override
     public List<RetaBatch> listByNodeAndStatus(Integer nodeId, Integer status) {
@@ -115,5 +121,23 @@ public class RetaBatchServiceImpl extends ServiceImpl<RetaBatchMapper, RetaBatch
             }
         }
         throw new BizException("溯源标识码生成冲突，请重试");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveWithQuantityCheck(RetaBatch batch) {
+        batchQuantityService.assertCanTake(BatchQuantityService.STAGE_RETA,
+                batch.getUpBatchNo(), batch.getUpNodeId(), batch.getUpQuantityKg());
+        save(batch);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateWithQuantityCheck(RetaBatch batch) {
+        // 排除自身已占用的额度，否则"把 800kg 改成 1200kg"会被误判超领
+        batchQuantityService.assertCanTake(BatchQuantityService.STAGE_RETA,
+                batch.getUpBatchNo(), batch.getUpNodeId(), batch.getUpQuantityKg(),
+                batch.getRetaBatchId());
+        return updateById(batch);
     }
 }

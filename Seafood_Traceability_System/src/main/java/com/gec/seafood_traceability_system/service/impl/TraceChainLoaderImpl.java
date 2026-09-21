@@ -1,5 +1,6 @@
 package com.gec.seafood_traceability_system.service.impl;
 
+import com.gec.seafood_traceability_system.pojo.ChainTreeNode;
 import com.gec.seafood_traceability_system.pojo.FarmBatch;
 import com.gec.seafood_traceability_system.pojo.FrozBatch;
 import com.gec.seafood_traceability_system.pojo.NodeInfo;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -186,5 +188,156 @@ public class TraceChainLoaderImpl implements TraceChainLoader {
             chain.setFarmNode(nodeInfoService.getById(farm.getNodeId()));
         }
         return chain;
+    }
+
+    // ------------------------------------------------------------------
+    // 产业链树
+    // ------------------------------------------------------------------
+
+    @Override
+    public ChainTreeNode loadTreeByRetaBatchId(Integer retaBatchId) {
+        if (retaBatchId == null) {
+            return null;
+        }
+        RetaBatch reta = retaBatchService.getById(retaBatchId);
+        if (reta == null) {
+            return null;
+        }
+        // 先走一遍当前链，得到"哪几个批号是用户正在看的那条"，用于打 onCurrentChain 标记
+        TraceChain current = walkUp(reta);
+        Set<String> currentPath = currentPathKeys(current);
+
+        // 链路上游是线、下游是树：从能上溯到的最靠上游那一级开始向下展开。
+        // 养殖断链时就退化为以加工（或批发/零售）为根，而不是直接返回 null。
+        if (current.getFarm() != null) {
+            return buildFarmNode(current.getFarm(), currentPath);
+        }
+        if (current.getFroz() != null) {
+            return buildFrozNode(current.getFroz(), currentPath);
+        }
+        if (current.getWhol() != null) {
+            return buildWholNode(current.getWhol(), currentPath);
+        }
+        return buildRetaNode(reta, currentPath);
+    }
+
+    /** 当前链上各级批号的唯一标识（环节码 + 批号），供打标记时比对 */
+    private Set<String> currentPathKeys(TraceChain chain) {
+        Set<String> keys = new LinkedHashSet<>();
+        if (chain.getFarm() != null) {
+            keys.add(key(STAGE_FARM, chain.getFarm().getBatchNo()));
+        }
+        if (chain.getFroz() != null) {
+            keys.add(key(STAGE_FROZ, chain.getFroz().getBatchNo()));
+        }
+        if (chain.getWhol() != null) {
+            keys.add(key(STAGE_WHOL, chain.getWhol().getBatchNo()));
+        }
+        if (chain.getReta() != null) {
+            keys.add(key(STAGE_RETA, chain.getReta().getBatchNo()));
+        }
+        return keys;
+    }
+
+    private String key(int stageType, String batchNo) {
+        return stageType + ":" + batchNo;
+    }
+
+    /**
+     * 向下找某一级的所有下游批号。
+     * <p>
+     * 同时限定 {@code up_batch_no} 与 {@code up_node_id}：不同企业可能出现同号批号，
+     * 只按批号匹配会串链（与 walkUp 的匹配口径保持一致）。
+     * 结果按批号排序，保证同一份数据每次渲染顺序一致。
+     */
+    private List<FrozBatch> findFrozDownstream(String upBatchNo, Integer upNodeId) {
+        if (upBatchNo == null) {
+            return new ArrayList<>();
+        }
+        List<FrozBatch> list = frozBatchService.lambdaQuery()
+                .eq(FrozBatch::getUpBatchNo, upBatchNo)
+                .eq(upNodeId != null, FrozBatch::getUpNodeId, upNodeId)
+                .list();
+        list.sort(Comparator.comparing(FrozBatch::getBatchNo));
+        return list;
+    }
+
+    private List<WholBatch> findWholDownstream(String upBatchNo, Integer upNodeId) {
+        if (upBatchNo == null) {
+            return new ArrayList<>();
+        }
+        List<WholBatch> list = wholBatchService.lambdaQuery()
+                .eq(WholBatch::getUpBatchNo, upBatchNo)
+                .eq(upNodeId != null, WholBatch::getUpNodeId, upNodeId)
+                .list();
+        list.sort(Comparator.comparing(WholBatch::getBatchNo));
+        return list;
+    }
+
+    private List<RetaBatch> findRetaDownstream(String upBatchNo, Integer upNodeId) {
+        if (upBatchNo == null) {
+            return new ArrayList<>();
+        }
+        List<RetaBatch> list = retaBatchService.lambdaQuery()
+                .eq(RetaBatch::getUpBatchNo, upBatchNo)
+                .eq(upNodeId != null, RetaBatch::getUpNodeId, upNodeId)
+                .list();
+        list.sort(Comparator.comparing(RetaBatch::getBatchNo));
+        return list;
+    }
+
+    private ChainTreeNode buildFarmNode(FarmBatch farm, Set<String> currentPath) {
+        ChainTreeNode node = newNode(STAGE_FARM, "养殖企业", farm.getFarmBatchId(),
+                farm.getBatchNo(), farm.getNodeId(), farm.getBreed(), farm.getProductForm(),
+                farm.getStatus(), farm.getQualityStatus(), farm.getCreateTime(), currentPath);
+        for (FrozBatch child : findFrozDownstream(farm.getBatchNo(), farm.getNodeId())) {
+            node.getChildren().add(buildFrozNode(child, currentPath));
+        }
+        return node;
+    }
+
+    private ChainTreeNode buildFrozNode(FrozBatch froz, Set<String> currentPath) {
+        ChainTreeNode node = newNode(STAGE_FROZ, "冷冻加工企业", froz.getFrozBatchId(),
+                froz.getBatchNo(), froz.getNodeId(), froz.getBreed(), froz.getProductType(),
+                froz.getStatus(), froz.getQualityStatus(), froz.getCreateTime(), currentPath);
+        for (WholBatch child : findWholDownstream(froz.getBatchNo(), froz.getNodeId())) {
+            node.getChildren().add(buildWholNode(child, currentPath));
+        }
+        return node;
+    }
+
+    private ChainTreeNode buildWholNode(WholBatch whol, Set<String> currentPath) {
+        ChainTreeNode node = newNode(STAGE_WHOL, "批发商", whol.getWholBatchId(),
+                whol.getBatchNo(), whol.getNodeId(), whol.getBreed(), whol.getProductType(),
+                whol.getStatus(), whol.getQualityStatus(), whol.getCreateTime(), currentPath);
+        for (RetaBatch child : findRetaDownstream(whol.getBatchNo(), whol.getNodeId())) {
+            node.getChildren().add(buildRetaNode(child, currentPath));
+        }
+        return node;
+    }
+
+    /** 零售是链路末端，不再向下展开 */
+    private ChainTreeNode buildRetaNode(RetaBatch reta, Set<String> currentPath) {
+        return newNode(STAGE_RETA, "零售商", reta.getRetaBatchId(),
+                reta.getBatchNo(), reta.getNodeId(), reta.getBreed(), reta.getProductType(),
+                reta.getStatus(), reta.getQualityStatus(), reta.getCreateTime(), currentPath);
+    }
+
+    private ChainTreeNode newNode(int stageType, String stageName, Integer batchId, String batchNo,
+                                 Integer nodeId, String breed, String productType,
+                                 Integer status, Integer qualityStatus, Object createTime,
+                                 Set<String> currentPath) {
+        ChainTreeNode node = new ChainTreeNode();
+        node.setStageType(stageType);
+        node.setStage(stageName);
+        node.setBatchId(batchId);
+        node.setBatchNo(batchNo);
+        node.setNode(nodeId == null ? null : nodeInfoService.getById(nodeId));
+        node.setBreed(breed);
+        node.setProductType(productType);
+        node.setStatus(status);
+        node.setQualityStatus(qualityStatus);
+        node.setOnCurrentChain(currentPath.contains(key(stageType, batchNo)));
+        return node;
     }
 }

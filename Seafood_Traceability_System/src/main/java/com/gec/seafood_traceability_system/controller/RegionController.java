@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.gec.seafood_traceability_system.service.BatchQuantityService;
+import java.math.BigDecimal;
 
 /**
  * 行政区域与上游企业联动接口
@@ -49,6 +51,10 @@ public class RegionController {
 
     @Autowired
     private WholBatchService wholBatchService;
+
+    /** 计算上游批号的剩余可领用量（上游批号下拉要显示它） */
+    @Autowired
+    private BatchQuantityService batchQuantityService;
 
     /** 查询全部省 */
     @GetMapping("/provinces")
@@ -91,7 +97,8 @@ public class RegionController {
                         Map<String, Object> m = batchMap(b.getBatchNo(), b.getBreed(), b.getBreedStage(), null);
                         m.put("productForm", b.getProductForm());
                         m.put("sourceType", b.getSourceType());
-                        list.add(m);
+                        list.add(withQuantity(m, BatchQuantityService.STAGE_FARM,
+                                b.getBatchNo(), b.getNodeId(), b.getQuantityKg()));
                     });
             case 2 -> frozBatchService.lambdaQuery()
                     .eq(FrozBatch::getNodeId, nodeId)
@@ -104,7 +111,8 @@ public class RegionController {
                         m.put("productForm", b.getProductForm());
                         m.put("specGrade", b.getSpecGrade());
                         m.put("productCode", b.getProductCode());
-                        list.add(m);
+                        list.add(withQuantity(m, BatchQuantityService.STAGE_FROZ,
+                                b.getBatchNo(), b.getNodeId(), b.getQuantityKg()));
                     });
             case 3 -> wholBatchService.lambdaQuery()
                     .eq(WholBatch::getNodeId, nodeId)
@@ -116,7 +124,8 @@ public class RegionController {
                         m.put("productForm", b.getProductForm());
                         m.put("specGrade", b.getSpecGrade());
                         m.put("productCode", b.getProductCode());
-                        list.add(m);
+                        list.add(withQuantity(m, BatchQuantityService.STAGE_WHOL,
+                                b.getBatchNo(), b.getNodeId(), b.getQuantityKg()));
                     });
             default -> {
                 return Result.error("该企业类型没有上游批号");
@@ -132,5 +141,25 @@ public class RegionController {
         map.put("breedStage", breedStage);
         map.put("productType", productType);
         return map;
+    }
+
+    /**
+     * 给上游批号的返回项补上「总量 / 剩余可领量」。
+     * <p>
+     * 前端下拉据此显示"FARM20260101（南美白对虾 / 剩余 1200kg）"，
+     * 并把已领完的批号（remainingKg = 0）置灰或不列出 ——
+     * 否则用户要提交后才被超领校验拦下，白填一遍表。
+     *
+     * @param upStageType 上游环节类型（本批号属于哪一环）
+     */
+    private Map<String, Object> withQuantity(Map<String, Object> item, int upStageType,
+                                             String batchNo, Integer upNodeId, BigDecimal quantityKg) {
+        item.put("quantityKg", quantityKg);
+        // 领用校验要看的是"下游表"里的领用量，故换算成下游环节类型
+        BigDecimal remaining = batchQuantityService.remaining(upStageType + 1, batchNo, upNodeId);
+        item.put("remainingKg", remaining);
+        // remainingKg 为 null 表示上游未登记数量，不限制领用，不算领完
+        item.put("soldOut", remaining != null && remaining.signum() <= 0);
+        return item;
     }
 }

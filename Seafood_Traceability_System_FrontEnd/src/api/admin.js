@@ -30,3 +30,7 @@ export const adminTraceChainApi = (keyword) =>
   request.get('/admin/trace/chain', { params: { keyword } })
 export const adminTraceChainByIdApi = (id) => request.get(`/admin/trace/chain/${id}`)
 export const adminTraceStatsApi = () => request.get('/admin/trace/stats')
+
+// 完整产业链树：一批虾派生出的虾滑/虾丸等各条分支都在里面（管理端视角）
+export const adminTraceTreeApi = (retaBatchId) =>
+  request.get(`/admin/trace/tree/${retaBatchId}`)

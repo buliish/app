@@ -27,6 +27,25 @@
           />
           <el-button type="primary" size="large" :loading="loading" @click="handleSearch">查 询</el-button>
         </div>
+
+        <!--
+          二维码跟着输入框联动：查询成功后显示该溯源码的专属二维码。
+          手机扫它 → 打开 /trace?code=SHZ... → 页面自动带码查询 → 直接出结果。
+          图片由后端 /trace/qrcode/{code} 直接吐 PNG，前端不做生成。
+
+          地址里的主机名来自后端配置 trace.qrcode.base-url（环境变量 TRACE_QR_BASE_URL），
+          演示时用 start-demo 脚本自动填本机局域网 IP —— 否则手机扫到 localhost 会指向手机自己。
+        -->
+        <div v-if="data && data.traceCode" class="qrcode-block">
+          <img
+            class="qrcode-img"
+            :src="`/trace/qrcode/${encodeURIComponent(data.traceCode)}`"
+            :alt="`溯源二维码 ${data.traceCode}`"
+          />
+          <p class="qrcode-code">{{ data.traceCode }}</p>
+          <p class="qrcode-hint">手机扫码直达溯源结果</p>
+        </div>
+        <p v-else class="qrcode-hint qrcode-hint--idle">查询后显示该产品的溯源二维码</p>
       </el-card>
 
       <template v-if="data">
@@ -261,5 +280,41 @@ async function handleSearch() {
 .gap {
   display: inline-block;
   width: 18px;
+}
+
+/* 二维码：查询成功后出现在输入框下方 */
+.qrcode-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.qrcode-img {
+  width: 180px;
+  height: 180px;
+  border: 1px solid var(--border-light, #e4e7ed);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+}
+
+.qrcode-code {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #1d6fb8;
+}
+
+.qrcode-hint {
+  font-size: 12px;
+  color: #909399;
+}
+
+.qrcode-hint--idle {
+  display: block;
+  text-align: center;
+  margin-top: 14px;
 }
 </style>

@@ -41,14 +41,21 @@
           </el-form-item>
 
           <el-form-item :label="upstreamName + '产品批号'" prop="upBatchNo">
-            <el-select v-model="form.upBatchNo" placeholder="请先选择上游企业" @change="onUpBatchChange">
+            <el-select
+              v-model="form.upBatchNo"
+              placeholder="请先选择上游企业"
+              @change="onUpBatchChange"
+            >
               <el-option
                 v-for="b in upBatches"
                 :key="b.batchNo"
-                :label="`${b.batchNo}（${b.breed || ''}${b.productType ? ' / ' + b.productType : ''}）`"
+                :label="batchLabel(b)"
                 :value="b.batchNo"
+                :disabled="b.soldOut"
               />
             </el-select>
+            <!-- 选中后给出剩余量提示，避免填完才被超领校验拦下 -->
+            <p v-if="selectedUpBatch" class="field-hint">{{ remainHint(selectedUpBatch) }}</p>
           </el-form-item>
 
           <!--
@@ -57,6 +64,24 @@
           -->
           <el-form-item :label="upstreamName + '产品品种'" prop="breed">
             <el-input v-model="form.breed" placeholder="选择上游产品批号后自动带出" disabled />
+          </el-form-item>
+
+          <!--
+            领用数量：这批货我从上游批号里领了多少（kg）。
+            与下面「本批产出数量」分开填，因为加工有损耗 ——
+            领 1000kg 虾做出 550kg 虾滑是常态，一个数字说不清。
+          -->
+          <el-form-item :label="'本批领用数量（kg）'" prop="upQuantityKg">
+            <el-input-number
+              v-model="form.upQuantityKg"
+              :min="0.01"
+              :precision="2"
+              :step="10"
+              controls-position="right"
+              placeholder="从上游批号领用的重量"
+              style="width: 100%"
+            />
+            <p class="field-hint">不得超过上游批号的剩余可领量；留空表示不登记，不做超领校验</p>
           </el-form-item>
         </template>
 
@@ -90,6 +115,27 @@
         <!-- 批发商 / 零售商：产品类型同样沿用上游，仅展示不可改 -->
         <el-form-item v-if="nodeType === 3 || nodeType === 4" label="产品类型" prop="productType">
           <el-input v-model="form.productType" placeholder="选择上游产品批号后自动带出" disabled />
+        </el-form-item>
+
+        <!--
+          本批号的量（kg）。养殖＝本批出场量；下游＝本批产出量。
+          下游的产出量会小于上面的领用量（加工有损耗），两者之差就是损耗，
+          不再额外做一个"损耗率"字段 —— 能算出来的不存。
+        -->
+        <el-form-item :label="nodeType === 1 ? '本批出场数量（kg）' : '本批产出数量（kg）'" prop="quantityKg">
+          <el-input-number
+            v-model="form.quantityKg"
+            :min="0.01"
+            :precision="2"
+            :step="10"
+            controls-position="right"
+            :placeholder="nodeType === 1 ? '本批出场多少公斤' : '加工后产出多少公斤'"
+            style="width: 100%"
+          />
+          <p v-if="nodeType !== 1" class="field-hint">
+            产出量通常小于领用量（加工有损耗），两者之差即为本环节的损耗
+          </p>
+          <p v-else class="field-hint">下游各批号的领用量之和不得超过本数量；留空表示不登记，不做超领校验</p>
         </el-form-item>
 
         <!-- 合格证：养殖为动物检验检疫合格证，加工为产品检验检疫合格证 -->
@@ -183,8 +229,45 @@ const form = reactive({
   provId: null,
   cityId: null,
   upNodeId: null,
-  upBatchNo: ''
+  upBatchNo: '',
+  // 本批号的量：养殖＝出场量，下游＝产出量
+  quantityKg: null,
+  // 从上游批号领用的量（养殖没有上游，提交时会被剔除）
+  upQuantityKg: null
 })
+
+/** 当前选中的上游批号，用于显示剩余量提示 */
+const selectedUpBatch = computed(
+  () => upBatches.value.find((b) => b.batchNo === form.upBatchNo) || null
+)
+
+/**
+ * 上游批号下拉的显示文案。
+ * 带出剩余可领量，让人选之前就知道还能领多少。
+ */
+function batchLabel(b) {
+  const base = `${b.batchNo}（${b.breed || ''}${b.productType ? ' / ' + b.productType : ''}）`
+  if (b.remainingKg === null || b.remainingKg === undefined) {
+    return `${base} 数量未登记`
+  }
+  return `${base} 剩余 ${trimKg(b.remainingKg)} kg`
+}
+
+/** 选中上游批号后的提示行 */
+function remainHint(b) {
+  if (b.quantityKg === null || b.quantityKg === undefined) {
+    return '该上游批号未登记数量，本次领用不做超领校验'
+  }
+  if (b.soldOut) {
+    return `该批号已领完（总量 ${trimKg(b.quantityKg)} kg），请换一个`
+  }
+  return `上游总量 ${trimKg(b.quantityKg)} kg，剩余可领 ${trimKg(b.remainingKg)} kg`
+}
+
+/** 去掉多余小数：1000.00 → 1000，1050.50 → 1050.5 */
+function trimKg(v) {
+  return Number(v).toString()
+}
 
 const rules = {
   batchNo: [{ required: true, message: '请输入产品批号', trigger: 'blur' }],
@@ -288,6 +371,8 @@ async function handleSubmit() {
         delete payload.upNodeId
         delete payload.upBatchNo
         delete payload.productType
+        // 养殖是链头，没有上游，也就没有"领用量"
+        delete payload.upQuantityKg
         // 注意：养殖阶段（breedStage）是养殖企业专属字段，必须保留提交，
         // 此前这里被误删导致该字段永远存不进库
       } else {
@@ -366,5 +451,14 @@ async function handleSubmit() {
   font-size: 16px;
   letter-spacing: 6px;
   border-radius: 8px;
+}
+
+/* 表单字段下方的辅助说明（剩余量、损耗提示等） */
+.field-hint {
+  width: 100%;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #909399;
 }
 </style>

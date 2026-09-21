@@ -1,5 +1,6 @@
 package com.gec.seafood_traceability_system.service;
 
+import com.gec.seafood_traceability_system.pojo.ChainTreeNode;
 import com.gec.seafood_traceability_system.pojo.TraceChain;
 
 import java.util.List;
@@ -42,4 +43,20 @@ public interface TraceChainLoader {
      * @return 候选列表，无命中时为空列表
      */
     List<Integer> resolveCandidates(String keyword);
+
+    /**
+     * 以指定零售批号为入口，构建<b>完整产业链树</b>。
+     * <p>
+     * 与 {@link #loadByRetaBatchId(Integer)} 的区别：后者只走"从零售往上游的一条线"，
+     * 本方法先上溯到养殖源头，<b>再从源头向下展开全部分支</b> ——
+     * 因为一批虾可以同时被加工成虾滑、虾丸等多个产品，链路上游是线、下游是树。
+     * <p>
+     * 每个节点带 {@code onCurrentChain} 标记，前端据此区分"我正在看的这条分支"
+     * 与"同源的其他分支"。养殖环节断链时（历史数据没接上），退化为
+     * 以能上溯到的最靠上游那一级为根，不会返回 null。
+     *
+     * @param retaBatchId 零售批号主键
+     * @return 树的根节点；零售批号不存在时返回 null
+     */
+    ChainTreeNode loadTreeByRetaBatchId(Integer retaBatchId);
 }

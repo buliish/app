@@ -168,9 +168,51 @@
               <el-table-column prop="remark" label="备注" min-width="180" />
             </el-table>
           </el-card>
+
+          <!--
+            产业链树：上面那几张卡是"从这件商品往上游的一条线"，
+            这里给的是整棵树 —— 一批虾派生出的虾滑、虾丸等各条分支都在里面。
+            标了「当前链」的是用户正在看的那一条。
+          -->
+          <el-card v-if="tree" shadow="never" class="crud-card">
+            <template #header>
+              <div class="tree-head">
+                <span class="card-title">产业链树</span>
+                <span class="tree-sub">同一批原料派生出的全部产品与流向</span>
+              </div>
+            </template>
+            <el-tree
+              :data="[tree]"
+              default-expand-all
+              :expand-on-click-node="false"
+              class="chain-tree"
+            >
+              <template #default="{ data: node }">
+                <span class="tree-node" :class="{ 'is-current': node.onCurrentChain }">
+                  <el-tag size="small" :type="stageTagType(node.stageType)" effect="plain">
+                    {{ node.stage }}
+                  </el-tag>
+                  <span class="tree-batch">{{ node.batchNo }}</span>
+                  <span class="tree-product">{{ node.productType || '—' }}</span>
+                  <span class="tree-org">{{ node.node ? node.node.name : '—' }}</span>
+                  <QualityTag :status="node.qualityStatus" />
+                  <el-tag v-if="node.onCurrentChain" size="small" type="success" effect="dark">
+                    当前链
+                  </el-tag>
+                </span>
+              </template>
+            </el-tree>
+          </el-card>
         </template>
 
-        <el-empty v-else-if="searched" description="未找到匹配的批次" />
+        <!--
+          只有"确实一条都没匹配到"才显示空态。
+          命中多条时上方已列出候选等用户点选，此时若还显示"未找到"自相矛盾。
+        -->
+        <el-empty
+          v-else-if="searched && candidates.length === 0"
+          description="未找到匹配的批次"
+        />
       </div>
     </el-main>
   </div>
@@ -178,22 +220,25 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   adminTraceChainApi,
   adminTraceChainByIdApi,
   adminTraceSearchApi,
-  adminTraceStatsApi
+  adminTraceStatsApi,
+  adminTraceTreeApi
 } from '../../api/admin'
 import InspectionTable from '../../components/InspectionTable.vue'
 import QualityTag from '../../components/QualityTag.vue'
 import seafoodLogo from '../../assets/images/海鲜.png'
 
 const router = useRouter()
+const route = useRoute()
 const keyword = ref('')
 const candidates = ref([])
 const chain = ref(null)
+const tree = ref(null)
 const searching = ref(false)
 const searched = ref(false)
 const stageFilter = ref(null)
@@ -241,6 +286,29 @@ async function doSearch() {
 async function loadChainById(row) {
   const res = await adminTraceChainByIdApi(row.retaBatchId)
   chain.value = res.data || null
+  // 产业链树与链路明细是两个视角，一起加载；树失败不影响明细展示
+  await loadTree(row.retaBatchId)
+}
+
+/**
+ * 加载产业链树。
+ * 与 chain 的区别：chain 是"从这件商品往上游的一条线"，
+ * tree 是"同一批原料派生出的整棵树"。
+ * 树拉取失败时静默降级（只显示 undefined），不打断主流程。
+ */
+async function loadTree(retaBatchId) {
+  tree.value = null
+  try {
+    const res = await adminTraceTreeApi(retaBatchId)
+    tree.value = res.data || null
+  } catch (e) {
+    tree.value = null
+  }
+}
+
+/** 树节点上的环节标签配色，与节点类型一一对应 */
+function stageTagType(stageType) {
+  return { 1: 'success', 2: 'warning', 3: 'primary', 4: 'info' }[stageType] || 'info'
 }
 
 function quick(code) {
@@ -252,6 +320,7 @@ function resetAll() {
   keyword.value = ''
   candidates.value = []
   chain.value = null
+  tree.value = null
   searched.value = false
   stageFilter.value = null
 }
@@ -262,6 +331,14 @@ function handleLogout() {
 }
 
 onMounted(async () => {
+  // 先处理 URL 上的关键词 —— 这是用户打开页面就是为了看的东西，
+  // 不能排在统计请求后面（否则要等一个多余的网络往返才开始查）
+  const kw = route.query.keyword
+  if (kw) {
+    keyword.value = String(kw)
+    doSearch()
+  }
+
   // 顶部统计留给页面扩展；失败不影响主流程
   try {
     const res = await adminTraceStatsApi()
@@ -365,5 +442,52 @@ onMounted(async () => {
 .chain-tags {
   display: flex;
   gap: 8px;
+}
+
+/* 产业链树 */
+.tree-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.tree-sub {
+  font-size: 12px;
+  color: #909399;
+}
+
+.chain-tree {
+  background: transparent;
+}
+
+/* 每个节点一行：环节 + 批号 + 品类 + 企业 + 质量 + 当前链标记 */
+.tree-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* 当前查看的那条链：左侧色条 + 浅底，一眼看出自己在哪一支 */
+.tree-node.is-current {
+  background: #eef6fd;
+  box-shadow: inset 3px 0 0 #1d6fb8;
+}
+
+.tree-batch {
+  font-weight: 600;
+  color: #303133;
+  min-width: 150px;
+}
+
+.tree-product {
+  color: #606266;
+  min-width: 90px;
+}
+
+.tree-org {
+  color: #909399;
 }
 </style>

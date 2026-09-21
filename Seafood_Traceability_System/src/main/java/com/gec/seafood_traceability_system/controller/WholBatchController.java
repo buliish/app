@@ -59,7 +59,7 @@ public class WholBatchController {
         batch.setStatus(1);
         batch.setCreateTime(LocalDateTime.now());
         batch.setUpdateTime(LocalDateTime.now());
-        wholBatchService.save(batch);
+        wholBatchService.saveWithQuantityCheck(batch);
         return Result.success();
     }
 
@@ -71,7 +71,7 @@ public class WholBatchController {
         batch.setNodeId(currentNodeId());
         batch.setStatus(Boolean.TRUE.equals(sendConfirm) ? 2 : 1);
         batch.setUpdateTime(LocalDateTime.now());
-        wholBatchService.updateById(batch);
+        wholBatchService.updateWithQuantityCheck(batch);
         return Result.success();
     }
 

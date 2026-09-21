@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.gec.seafood_traceability_system.service.BatchQuantityService;
 
 /**
  * 冷冻加工企业产品批号业务实现
@@ -25,6 +26,10 @@ import java.util.stream.Collectors;
  */
 @Service
 public class FrozBatchServiceImpl extends ServiceImpl<FrozBatchMapper, FrozBatch> implements FrozBatchService {
+
+    /** 领用量校验（含悲观锁），与落库同事务 */
+    @Autowired
+    private BatchQuantityService batchQuantityService;
 
     @Autowired
     private NodeInfoService nodeInfoService;
@@ -106,5 +111,23 @@ public class FrozBatchServiceImpl extends ServiceImpl<FrozBatchMapper, FrozBatch
         batch.setStatus(3);
         batch.setUpdateTime(LocalDateTime.now());
         return wholBatchService.updateById(batch);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveWithQuantityCheck(FrozBatch batch) {
+        batchQuantityService.assertCanTake(BatchQuantityService.STAGE_FROZ,
+                batch.getUpBatchNo(), batch.getUpNodeId(), batch.getUpQuantityKg());
+        save(batch);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateWithQuantityCheck(FrozBatch batch) {
+        // 排除自身已占用的额度，否则"把 800kg 改成 1200kg"会被误判超领
+        batchQuantityService.assertCanTake(BatchQuantityService.STAGE_FROZ,
+                batch.getUpBatchNo(), batch.getUpNodeId(), batch.getUpQuantityKg(),
+                batch.getFrozBatchId());
+        return updateById(batch);
     }
 }

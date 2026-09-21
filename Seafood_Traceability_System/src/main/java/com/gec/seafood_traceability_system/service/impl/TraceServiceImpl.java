@@ -10,6 +10,7 @@ import com.gec.seafood_traceability_system.pojo.RetaBatch;
 import com.gec.seafood_traceability_system.pojo.TraceChain;
 import com.gec.seafood_traceability_system.pojo.WholBatch;
 import com.gec.seafood_traceability_system.service.InspectionService;
+import com.gec.seafood_traceability_system.service.NodeInfoService;
 import com.gec.seafood_traceability_system.service.RetaBatchService;
 import com.gec.seafood_traceability_system.service.TraceChainLoader;
 import com.gec.seafood_traceability_system.service.TraceService;
@@ -40,6 +41,9 @@ public class TraceServiceImpl implements TraceService {
 
     @Autowired
     private InspectionService inspectionService;
+
+    @Autowired
+    private NodeInfoService nodeInfoService;
 
     /** 直接注入 Mapper：商品列表要走 XML 里的一条 JOIN 查询 */
     @Autowired
@@ -185,7 +189,53 @@ public class TraceServiceImpl implements TraceService {
         data.put("retailer", stageDetail(chain.getRetaNode()));
         data.put("retaBatch", reta);
         data.put("chain", stages);
+        data.put("relatedProducts", relatedProducts(chain));
         return data;
+    }
+
+    /**
+     * 同源产品：与本商品出自<b>同一个养殖批号</b>的其他零售商品。
+     * <p>
+     * 一批虾可以同时被加工成虾滑、虾丸、冷冻整虾，消费者扫其中一件的码时，
+     * 应该能知道"这批虾还做成了什么"。
+     * <p>
+     * 这里只回零售层的公开信息（溯源码、品名、品类、门店），
+     * <b>刻意不返回中间环节</b> —— 消费者没有理由看到别人家的批发商、
+     * 加工厂是谁，那属于管理端的视野。
+     */
+    private List<Map<String, Object>> relatedProducts(TraceChain chain) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        FarmBatch farm = chain.getFarm();
+        RetaBatch self = chain.getReta();
+        if (farm == null || self == null) {
+            return result;
+        }
+        // 从养殖批号向下找到全部零售端，剔除自己
+        List<Integer> ids = new ArrayList<>(traceChainLoader.resolveCandidates(farm.getBatchNo()));
+        ids.removeIf(id -> id.equals(self.getRetaBatchId()));
+        if (ids.isEmpty()) {
+            return result;
+        }
+        List<RetaBatch> others = retaBatchService.listByIds(ids);
+        // 批量取门店名，避免逐条查企业
+        Map<Integer, String> retailerNames = new LinkedHashMap<>();
+        others.stream().map(RetaBatch::getNodeId).distinct().forEach(nodeId -> {
+            NodeInfo node = nodeInfoService.getById(nodeId);
+            retailerNames.put(nodeId, node == null ? null : node.getName());
+        });
+        for (RetaBatch other : others) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("retaBatchId", other.getRetaBatchId());
+            item.put("traceCode", other.getTraceCode());
+            item.put("batchNo", other.getBatchNo());
+            item.put("breed", other.getBreed());
+            item.put("productType", other.getProductType());
+            item.put("productForm", other.getProductForm());
+            item.put("qualityStatus", other.getQualityStatus());
+            item.put("retailerName", retailerNames.get(other.getNodeId()));
+            result.add(item);
+        }
+        return result;
     }
 
     /** 链路节点简要信息 */

@@ -1,5 +1,7 @@
 package com.gec.seafood_traceability_system.service;
 
+import com.gec.seafood_traceability_system.pojo.ChainTreeNode;
+
 import java.util.List;
 import java.util.Map;
 
@@ -22,4 +24,19 @@ public interface AdminTraceService {
 
     /** 各环节合格率与形态分布统计（管理端图表用） */
     Map<String, Object> stats();
+
+    /**
+     * 完整产业链树（从养殖源头向下展开全部分支）。
+     * <p>
+     * 与 {@link #chainByRetaBatchId(Integer)} 的区别：后者只给"从这件商品
+     * 往上游的一条线"，本方法给的是<b>整棵产业树</b> —— 一批虾派生出的
+     * 虾滑、虾丸等各条分支都能看到，用于监管视角的流向分析与排障。
+     * <p>
+     * 返回类型用 {@link ChainTreeNode} 而不是 Map：树的层次结构用 Map
+     * 表达会退化成层层嵌套的字符串 key，前端拿不到可读的类型契约。
+     *
+     * @param retaBatchId 入口零售批号主键
+     * @return 树根；批号不存在时返回 null
+     */
+    ChainTreeNode treeByRetaBatchId(Integer retaBatchId);
 }

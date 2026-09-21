@@ -1,6 +1,7 @@
 package com.gec.seafood_traceability_system.controller;
 
 import com.gec.seafood_traceability_system.pojo.BizException;
+import com.gec.seafood_traceability_system.pojo.ChainTreeNode;
 import com.gec.seafood_traceability_system.pojo.Result;
 import com.gec.seafood_traceability_system.service.AdminTraceService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,22 @@ public class AdminTraceController {
             throw new BizException("批次不存在或已被删除");
         }
         return Result.success(data);
+    }
+
+    /**
+     * 完整产业链树。
+     * <p>
+     * 与 /chain 的区别：/chain 只给"从这件商品往上游的一条线"，
+     * 本接口给整棵树 —— 一批虾派生出的虾滑、虾丸等各条分支都在里面，
+     * 节点上的 {@code onCurrentChain} 标出用户当前看的是哪一支。
+     */
+    @GetMapping("/tree/{retaBatchId}")
+    public Result<ChainTreeNode> tree(@PathVariable Integer retaBatchId) {
+        ChainTreeNode root = adminTraceService.treeByRetaBatchId(retaBatchId);
+        if (root == null) {
+            throw new BizException("批次不存在或已被删除");
+        }
+        return Result.success(root);
     }
 
     /** 各环节合格率与在售产品形态分布 */

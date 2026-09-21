@@ -38,6 +38,22 @@
           <span class="code-text">{{ detail.traceCode }}</span>
           <button type="button" class="trace-btn" @click="router.push('/trace')">前往溯源查询</button>
         </div>
+
+        <!--
+          二维码：供零售商打印后贴到产品包装上。
+          图片由后端 /trace/qrcode/{code} 直接吐 PNG，前端不生成。
+          扫码地址里的主机名来自后端配置 trace.qrcode.base-url，
+          用 start-demo 脚本启动时会自动填本机局域网 IP ——
+          否则二维码指向 localhost，消费者手机扫了打不开。
+        -->
+        <div class="qrcode-wrap">
+          <img
+            class="qrcode-img"
+            :src="`/trace/qrcode/${encodeURIComponent(detail.traceCode)}`"
+            :alt="`溯源二维码 ${detail.traceCode}`"
+          />
+          <p class="qrcode-tip">扫码直达溯源页 · 可打印贴于产品包装</p>
+        </div>
       </div>
 
       <!-- 加工工序记录（冷冻加工企业） -->
@@ -432,6 +448,24 @@ async function handleDeleteInspection(rec) {
   await loadInspections()
 }
 
+/** 数量显示：未登记时给破折号，不留空白 */
+function kgText(v) {
+  return v === null || v === undefined ? '—' : `${Number(v)} kg`
+}
+
+/**
+ * 本环节损耗 = 领用量 − 产出量。
+ * 两者任一未登记就不显示（算不出来就别硬算）。
+ */
+function lossText(upKg, outKg) {
+  if (upKg === null || upKg === undefined || outKg === null || outKg === undefined) {
+    return '—'
+  }
+  const loss = Number(upKg) - Number(outKg)
+  const rate = Number(upKg) > 0 ? ((loss / Number(upKg)) * 100).toFixed(1) : '0.0'
+  return `${Number(loss.toFixed(2))} kg（${rate}%）`
+}
+
 // 详情字段按角色组装：养殖显示检疫合格证/官方检疫员，其余环节显示进场信息
 const infoItems = computed(() => {
   const items = [
@@ -443,6 +477,7 @@ const infoItems = computed(() => {
       { label: '养殖阶段', value: detail.breedStage },
       { label: '来源方式', value: detail.sourceType },
       { label: '产品形态', value: detail.productForm },
+      { label: '本批出场量', value: kgText(detail.quantityKg) },
       { label: '动物检验检疫合格证', value: detail.quarantineNo },
       { label: '官方检疫员名称', value: detail.inspector }
     )
@@ -457,7 +492,11 @@ const infoItems = computed(() => {
       {
         label: `${upstreamName.value}所在区域`,
         value: provName.value || cityName.value ? `${provName.value} ${cityName.value}` : ''
-      }
+      },
+      // 领用量与产出量分开列，两者之差就是本环节的加工损耗
+      { label: '本批领用量', value: kgText(detail.upQuantityKg) },
+      { label: '本批产出量', value: kgText(detail.quantityKg) },
+      { label: '本环节损耗', value: lossText(detail.upQuantityKg, detail.quantityKg) }
     )
   }
   // 零售价仅零售商批号有
@@ -591,6 +630,30 @@ onMounted(async () => {
 
 .trace-btn:hover {
   background: #0b4f8c;
+}
+
+/* 溯源二维码：供零售商打印贴包装 */
+.qrcode-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px 12px;
+  border-top: 1px dashed #e4e7ed;
+}
+
+.qrcode-img {
+  width: 160px;
+  height: 160px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+}
+
+.qrcode-tip {
+  font-size: 12px;
+  color: #909399;
 }
 
 /* 加工工序记录 */

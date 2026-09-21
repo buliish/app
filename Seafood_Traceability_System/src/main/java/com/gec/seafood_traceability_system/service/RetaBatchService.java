@@ -30,4 +30,15 @@ public interface RetaBatchService extends OwnedBatchService<RetaBatch> {
      * @param downName   下游企业名称模糊条件，可为 null
      */
     List<ConfirmVO> listDownConfirm(List<String> upBatchNos, String downName);
+
+    /**
+     * 建号：先校验向上游领用的数量（含悲观锁），再落库。
+     * <p>
+     * 校验与落库必须在<b>同一事务</b>内 —— 行锁在事务提交时才释放，
+     * 否则并发领用同一批货时，两个请求可能都通过校验再双双写入。
+     */
+    void saveWithQuantityCheck(RetaBatch batch);
+
+    /** 更新：同样校验领用量，并排除自身已占用的额度 */
+    boolean updateWithQuantityCheck(RetaBatch batch);
 }
