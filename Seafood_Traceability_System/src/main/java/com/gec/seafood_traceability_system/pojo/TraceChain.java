@@ -4,111 +4,72 @@ import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
- * 一条完整的溯源链路：零售 → 批发 → 冷冻加工 → 养殖。
+ * 一条完整的溯源链（零售 → 批发 → 冷冻加工 → 养殖）
  * <p>
- * 由 {@code TraceChainLoader} 沿 {@code up_batch_no} 逐级上溯装配，
- * 消费者端与管理端复用同一份链路对象，只是各自的门槛与渲染不同。
- * <p>
- * 上溯过程中任一级缺失（历史数据没接上链路）时，对应字段为 {@code null}，
- * 由 {@link #isComplete()} 反映出来——不在这里抛异常，因为管理端需要
- * 看到"链路断在哪一段"。
+ * 消费者门面与管理端门面共用同一个 {@code TraceChainLoader} 走查结果，
+ * 各自渲染时按需取舍 —— 消费者端只用企业名与批号，
+ * 管理端还要看检测明细、质量状态与是否链路完整。
  */
 @Data
 public class TraceChain {
 
-    /** 环节类型，与 node_info.type 取值保持一致 */
-    public static final int STAGE_FARM = 1;
-    public static final int STAGE_FROZ = 2;
-    public static final int STAGE_WHOL = 3;
-    public static final int STAGE_RETA = 4;
-
-    /** 质量状态取值：与前端 QualityTag 的 QUALITY_STATUS 映射一致 */
-    public static final int QUALITY_PENDING = 0;
-    public static final int QUALITY_PASSED = 1;
-    public static final int QUALITY_REJECTED = 2;
-
-    /** 四级批号，链路缺失的那一级为 null */
+    /** 零售批号（链路入口，必然非空） */
     private RetaBatch reta;
+
+    /** 批发批号（链路断裂时为 null） */
     private WholBatch whol;
+
+    /** 冷冻加工批号（链路断裂时为 null） */
     private FrozBatch froz;
+
+    /** 养殖批号（链路断裂时为 null） */
     private FarmBatch farm;
 
-    /** 各级批号所属企业 */
+    /** 四个环节对应的企业信息，与上面四个批号一一对应，可能为 null */
     private NodeInfo retaNode;
     private NodeInfo wholNode;
     private NodeInfo frozNode;
     private NodeInfo farmNode;
 
-    /** 冷冻加工环节的工序记录（清洗/分级/冷冻/包装） */
+    /** 冷冻加工工序记录（仅加工环节有） */
     private List<ProcessRecord> processRecords = new ArrayList<>();
 
-    /**
-     * 链路是否完整。
-     * <p>
-     * 四级批号全部上溯到位才算完整；断链说明历史数据没接上，
-     * 消费者端要给出提示，管理端要能定位断点。
-     */
+    /** 各环节检测记录（消费者端与管理端都展示） */
+    private List<Inspection> inspections = new ArrayList<>();
+
+    /** 链路是否完整（四级都能上溯到） */
     public boolean isComplete() {
-        return farm != null && froz != null && whol != null && reta != null;
+        return reta != null && whol != null && froz != null && farm != null;
     }
 
     /**
-     * 全链路整体质量结论：取各级里最差的一档。
-     * <p>
-     * 规则：任一级"不合格"则整体不合格；未判定（null）的环节不参与拉低，
-     * 只有全部有判定且都合格才算合格；若四级都没有质量数据则视为待检。
-     * <p>
-     * 之所以取最差而非取最后一级，是因为溯源的意义在于"任何一环出过问题
-     * 都要能被消费者看见"。
+     * 整链质量结论：任一环节不合格即不合格；全部环节合格才算合格；
+     * 否则（存在待检环节）为待检。
      */
     public Integer overallQuality() {
-        List<Integer> qualities = new ArrayList<>();
-        if (farm != null) {
-            qualities.add(farm.getQualityStatus());
+        List<Integer> list = new ArrayList<>();
+        if (farm != null) list.add(farm.getQualityStatus());
+        if (froz != null) list.add(froz.getQualityStatus());
+        if (whol != null) list.add(whol.getQualityStatus());
+        if (reta != null) list.add(reta.getQualityStatus());
+        if (list.isEmpty()) {
+            return 0;
         }
-        if (froz != null) {
-            qualities.add(froz.getQualityStatus());
+        if (list.contains(2)) {
+            return 2;
         }
-        if (whol != null) {
-            qualities.add(whol.getQualityStatus());
-        }
-        if (reta != null) {
-            qualities.add(reta.getQualityStatus());
-        }
-        qualities.removeIf(Objects::isNull);
-
-        if (qualities.isEmpty()) {
-            return QUALITY_PENDING;
-        }
-        if (qualities.contains(QUALITY_REJECTED)) {
-            return QUALITY_REJECTED;
-        }
-        boolean allPassed = qualities.stream().allMatch(q -> q == QUALITY_PASSED);
-        return allPassed ? QUALITY_PASSED : QUALITY_PENDING;
+        return list.contains(0) ? 0 : 1;
     }
 
-    /**
-     * 本链路涉及的检测记录锚点，供 {@code InspectionService.listByRefs} 一次取全。
-     * <p>
-     * 只为链路中真实存在的环节生成锚点，断链时不会去查不存在批号的检测记录。
-     */
-    public List<InspectionRef> refs() {
-        List<InspectionRef> refs = new ArrayList<>();
-        if (farm != null) {
-            refs.add(new InspectionRef(STAGE_FARM, farm.getFarmBatchId()));
-        }
-        if (froz != null) {
-            refs.add(new InspectionRef(STAGE_FROZ, froz.getFrozBatchId()));
-        }
-        if (whol != null) {
-            refs.add(new InspectionRef(STAGE_WHOL, whol.getWholBatchId()));
-        }
-        if (reta != null) {
-            refs.add(new InspectionRef(STAGE_RETA, reta.getRetaBatchId()));
-        }
+    /** 链路上各环节的批号引用，用于一次性取回全部检测记录 */
+    public List<BatchRef> refs() {
+        List<BatchRef> refs = new ArrayList<>();
+        if (farm != null) refs.add(new BatchRef(1, farm.getFarmBatchId(), farm.getBatchNo()));
+        if (froz != null) refs.add(new BatchRef(2, froz.getFrozBatchId(), froz.getBatchNo()));
+        if (whol != null) refs.add(new BatchRef(3, whol.getWholBatchId(), whol.getBatchNo()));
+        if (reta != null) refs.add(new BatchRef(4, reta.getRetaBatchId(), reta.getBatchNo()));
         return refs;
     }
 }

@@ -66,10 +66,16 @@ public class FrozBatchServiceImpl extends ServiceImpl<FrozBatchMapper, FrozBatch
         if (upBatchNos.isEmpty()) {
             return new ArrayList<>();
         }
-        //2.下游批号 + 所属企业一次 JOIN 查出（多对一），名称模糊匹配下推到 SQL
-        return listDownConfirm(upBatchNos, downName);
+        //2.加工企业的下游是批发商，委托给 WholBatchService（它查 whol_batch 表）
+        return wholBatchService.listDownConfirm(upBatchNos, downName);
     }
 
+    /**
+     * 查"以这些批号为进场批号"的下游冷冻加工批号，并 JOIN 出下游企业。
+     * <p>
+     * 本方法查的是自己这张 froz_batch 表 —— 对养殖企业而言加工批号就是它的下游，
+     * 所以养殖环节的 listPendingConfirm 会委托到这里。
+     */
     @Override
     public List<ConfirmVO> listDownConfirm(List<String> upBatchNos, String downName) {
         if (upBatchNos == null || upBatchNos.isEmpty()) {

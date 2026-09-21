@@ -1,54 +1,37 @@
 package com.gec.seafood_traceability_system.service;
 
-import com.gec.seafood_traceability_system.pojo.InspectionRecord;
-import com.gec.seafood_traceability_system.pojo.InspectionRef;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.gec.seafood_traceability_system.pojo.BatchRef;
+import com.gec.seafood_traceability_system.pojo.Inspection;
 
 import java.util.List;
 
-/**
- * 检测记录业务接口（四环节共用）。
- * <p>
- * 继承 {@link OwnedBatchService} 以获得统一的归属校验：
- * 检测记录的删除必须限制在"本企业自己的"记录上。
- */
-public interface InspectionService extends OwnedBatchService<InspectionRecord> {
+/** 各环节检测记录业务接口 */
+public interface InspectionService extends IService<Inspection> {
 
-    /** 查询某个环节某条批号下的全部检测记录 */
-    List<InspectionRecord> listByStage(Integer stageType, Integer batchId);
+    /** 查询某个批号的全部检测记录（按报告号、主键排序） */
+    List<Inspection> listByBatch(Integer stageType, Integer batchId);
+
+    /** 一次取回整条溯源链（最多 4 个环节）的全部检测记录 */
+    List<Inspection> listByRefs(List<BatchRef> refs);
 
     /**
-     * 一次取全多条锚点的检测记录。
+     * 批量新增检测记录（数据层批量操作，见 InspectionMapper.xml 的 foreach）
+     *
+     * @param records 检测项列表，调用方需保证已校验归属并回填 nodeId/batchNo
+     * @return 实际插入条数
+     */
+    int saveBatchRecords(List<Inspection> records);
+
+    /**
+     * 重算并写回某批号的 quality_status（0 待检 / 1 合格 / 2 不合格）。
      * <p>
-     * 消费者端溯源时一条链路最多四级，逐级查会造成 4 次往返，
-     * 故按环节分组后用 IN 批量取回。
+     * 这是 inspection 明细表与批号冗余字段之间<b>唯一</b>的一致性维护点：
+     * 取该批号下所有检测项的最差结论 —— 只要有一条不合格，整批即为不合格；
+     * 否则只要有记录就算合格；一条都没有则回到待检。
      *
-     * @param refs 链路各级的检测锚点，可为空
+     * @param stageType 环节类型
+     * @param batchId   批号主键
      */
-    List<InspectionRecord> listByRefs(List<InspectionRef> refs);
-
-    /**
-     * 新增一条检测记录。
-     * <p>
-     * 写入后重算所属批号的质量状态（见 {@code refreshBatchQuality}）。
-     *
-     * @param record 待写入记录，batchId / stageType / nodeId 由调用方补齐
-     */
-    void addRecord(InspectionRecord record);
-
-    /**
-     * 批量新增检测记录（同一份报告多个检测项）。
-     * <p>
-     * 走数据层批量插入，并在最后统一重算一次批号质量状态。
-     *
-     * @param records 非空列表
-     * @return 实际写入行数
-     */
-    int addRecords(List<InspectionRecord> records);
-
-    /**
-     * 删除检测记录，并重算所属批号的质量状态。
-     *
-     * @param inspectionId 记录主键
-     */
-    void deleteRecord(Integer inspectionId);
+    void refreshBatchQuality(Integer stageType, Integer batchId);
 }

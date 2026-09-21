@@ -3,119 +3,148 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <!--
-  零售商产品批号 Mapper —— 消费者端商品列表/详情用的跨级 JOIN
-  单表增删改查仍由 MyBatis-Plus BaseMapper 自动生成。
+  零售商产品批号：消费者端"在售商品"查询
 
-  说明：返回类型是 Map 而不是实体，因为消费者端商品卡要的不是某一张表的行，
-  而是"一条零售批号 + 它的产地/形态/规格"的拼合结果；
-  这些字段分散在四级批号表里，逐级回走会造成 N+1，故用一条 JOIN 取全。
-  所有列都显式起驼峰别名，不依赖 map-underscore-to-camel-case 设置。
+  商品卡要显示产地、形态、规格，这些分散在四级批号表里：
+    零售 → 批发 → 冷冻加工 → 养殖
+  用一条 LEFT JOIN 一次取全，避免"每张卡片回走一次链路"的 N+1。
+
+  每级 JOIN 都同时匹配 batch_no 与 node_id，与后端逐级上溯的条件保持一致 ——
+  只用 batch_no 会在不同企业出现同号批号时串链。
 -->
 <mapper namespace="com.gec.seafood_traceability_system.mapper.RetaBatchMapper">
 
-    <!--
-      在售商品分页列表。
-      "在售" = 零售批号已确认(status=3) 且已生成溯源码、且零售环节质量不是不合格。
+    <!-- 在售条件：已确认 + 已生成溯源码 + 零售环节非不合格 -->
+    <sql id="onSaleCondition">
+        r.status = 3
+        AND r.trace_code IS NOT NULL
+        AND (r.quality_status IS NULL OR r.quality_status &lt;&gt; 2)
+    </sql>
 
-      注意 quality_status 的写法：MySQL 里 NULL <> 2 结果为 NULL（即不成立），
-      直接写 quality_status <> 2 会把"待检"的商品一并排除掉，
-      与"不是不合格即可售"的语义不符，故显式放行 NULL。
-
-      产地（省份）取链路最源头的养殖企业所在省，用 LEFT JOIN 保证
-      上游数据缺失的商品仍能出现在列表里（只是产地暂缺）。
-    -->
     <select id="selectProductPage" resultType="java.util.LinkedHashMap">
-        SELECT r.reta_batch_id   AS retaBatchId,
-               r.batch_no        AS batchNo,
-               r.trace_code      AS traceCode,
-               r.product_code    AS productCode,
-               r.breed           AS breed,
-               r.product_type    AS productType,
-               r.product_form    AS productForm,
-               r.spec_grade      AS specGrade,
-               r.price           AS price,
-               r.image_url       AS imageUrl,
-               r.quality_status  AS qualityStatus,
-               rn.name           AS retailerName,
-               rn.address        AS retailerAddress,
-               f.breed           AS farmBreed,
-               f.source_type     AS sourceType,
-               fn.name           AS farmName,
-               p.prov_name       AS originProvince,
-               p.prov_id         AS originProvId
+        SELECT r.reta_batch_id      AS retaBatchId,
+               r.trace_code         AS traceCode,
+               r.product_code       AS productCode,
+               r.batch_no           AS batchNo,
+               r.breed              AS breed,
+               r.product_type       AS productType,
+               -- 可为空的字符串统一 COALESCE 成空串：MySQL 会直接省略 NULL 列，
+               -- 导致前端拿到的对象时有时无这些 key，形状不稳定
+               COALESCE(r.product_form, '冻虾')  AS productForm,
+               COALESCE(r.spec_grade, '')        AS specGrade,
+               COALESCE(r.quality_status, 0)     AS qualityStatus,
+               r.price              AS price,
+               r.image_url          AS imageUrl,
+               r.trace_time         AS traceTime,
+               rn.name              AS retailerName,
+               COALESCE(fn.name, '')             AS originFarmName,
+               COALESCE(fn.address, '')          AS originAddress,
+               COALESCE(fm.source_type, '')      AS sourceType,
+               COALESCE(fm.breed_stage, '')      AS breedStage,
+               COALESCE(pn.prov_name, '')        AS originProvName,
+               COALESCE(cn.city_name, '')        AS originCityName
         FROM reta_batch r
-                 LEFT JOIN node_info rn ON rn.node_id = r.node_id
-                 LEFT JOIN whol_batch w ON w.batch_no = r.up_batch_no
-                 LEFT JOIN froz_batch z ON z.batch_no = w.up_batch_no
-                 LEFT JOIN farm_batch f ON f.batch_no = z.up_batch_no
-                 LEFT JOIN node_info fn ON fn.node_id = f.node_id
-                 LEFT JOIN province p ON p.prov_id = fn.prov_id
-        WHERE r.status = 3
-          AND r.trace_code IS NOT NULL
-          AND (r.quality_status IS NULL OR r.quality_status &lt;&gt; 2)
+                 LEFT JOIN whol_batch w  ON w.batch_no  = r.up_batch_no  AND w.node_id  = r.up_node_id
+                 LEFT JOIN froz_batch f  ON f.batch_no  = w.up_batch_no  AND f.node_id  = w.up_node_id
+                 LEFT JOIN farm_batch fm ON fm.batch_no = f.up_batch_no  AND fm.node_id = f.up_node_id
+                 LEFT JOIN node_info rn  ON rn.node_id  = r.node_id
+                 LEFT JOIN node_info fn  ON fn.node_id  = fm.node_id
+                 LEFT JOIN province pn   ON pn.prov_id  = rn.prov_id
+                 LEFT JOIN city cn       ON cn.city_id  = rn.city_id
+        WHERE <include refid="onSaleCondition"/>
         <if test="keyword != null and keyword != ''">
             AND (r.breed LIKE CONCAT('%', #{keyword}, '%')
-                 OR r.product_type LIKE CONCAT('%', #{keyword}, '%')
-                 OR r.batch_no LIKE CONCAT('%', #{keyword}, '%')
-                 OR r.product_code LIKE CONCAT('%', #{keyword}, '%'))
+                OR r.product_type LIKE CONCAT('%', #{keyword}, '%')
+                OR r.product_code LIKE CONCAT('%', #{keyword}, '%')
+                OR r.trace_code LIKE CONCAT('%', #{keyword}, '%'))
         </if>
         <if test="form != null and form != ''">
             AND r.product_form = #{form}
         </if>
         <if test="provId != null">
-            AND fn.prov_id = #{provId}
+            AND rn.prov_id = #{provId}
         </if>
-        ORDER BY r.reta_batch_id DESC
+        ORDER BY r.trace_time DESC, r.reta_batch_id DESC
     </select>
 
-    <!--
-      商品详情所需的链路概要（按零售批号主键）。
-      只取商品卡与详情头部要用的字段，完整链路仍走 TraceChainLoader。
-    -->
     <select id="selectProductDetail" resultType="java.util.LinkedHashMap">
-        SELECT r.reta_batch_id   AS retaBatchId,
-               r.batch_no        AS batchNo,
-               r.trace_code      AS traceCode,
-               r.product_code    AS productCode,
-               r.breed           AS breed,
-               r.product_type    AS productType,
-               r.product_form    AS productForm,
-               r.spec_grade      AS specGrade,
-               r.price           AS price,
-               r.image_url       AS imageUrl,
-               r.quality_status  AS qualityStatus,
-               r.status          AS status,
-               r.trace_time      AS traceTime,
-               rn.name           AS retailerName,
-               rn.address        AS retailerAddress,
-               rn.telephone      AS retailerTelephone,
-               z.batch_no        AS frozBatchNo,
-               zn.name           AS processorName,
-               f.batch_no        AS farmBatchNo,
-               f.source_type     AS sourceType,
-               fn.name           AS farmName,
-               p.prov_name       AS originProvince
+        SELECT r.reta_batch_id      AS retaBatchId,
+               r.trace_code         AS traceCode,
+               r.product_code       AS productCode,
+               r.product_form       AS productForm,
+               r.spec_grade         AS specGrade,
+               r.quality_status     AS qualityStatus,
+               r.price              AS price,
+               r.image_url          AS imageUrl,
+               fm.source_type       AS sourceType
         FROM reta_batch r
-                 LEFT JOIN node_info rn ON rn.node_id = r.node_id
-                 LEFT JOIN whol_batch w ON w.batch_no = r.up_batch_no
-                 LEFT JOIN froz_batch z ON z.batch_no = w.up_batch_no
-                 LEFT JOIN node_info zn ON zn.node_id = z.node_id
-                 LEFT JOIN farm_batch f ON f.batch_no = z.up_batch_no
-                 LEFT JOIN node_info fn ON fn.node_id = f.node_id
-                 LEFT JOIN province p ON p.prov_id = fn.prov_id
+                 LEFT JOIN whol_batch w  ON w.batch_no  = r.up_batch_no  AND w.node_id  = r.up_node_id
+                 LEFT JOIN froz_batch f  ON f.batch_no  = w.up_batch_no  AND f.node_id  = w.up_node_id
+                 LEFT JOIN farm_batch fm ON fm.batch_no = f.up_batch_no  AND fm.node_id = f.up_node_id
         WHERE r.reta_batch_id = #{retaBatchId}
     </select>
 
-    <!-- 在售商品的形态分布（管理端统计图用）：只统计真正在售的商品 -->
     <select id="selectFormDist" resultType="java.util.LinkedHashMap">
-        SELECT COALESCE(r.product_form, '未标注') AS name,
-               COUNT(*)                           AS value
+        SELECT COALESCE(NULLIF(r.product_form, ''), '冻虾') AS name,
+               COUNT(*) AS value
         FROM reta_batch r
-        WHERE r.status = 3
-          AND r.trace_code IS NOT NULL
-          AND (r.quality_status IS NULL OR r.quality_status &lt;&gt; 2)
-        GROUP BY COALESCE(r.product_form, '未标注')
-        ORDER BY value DESC
+        WHERE <include refid="onSaleCondition"/>
+        GROUP BY COALESCE(NULLIF(r.product_form, ''), '冻虾')
+    </select>
+
+    <!--
+      下游（零售商）进场确认列表：多对一 JOIN 出下游零售商企业。
+      与 FrozBatchMapper.xml / WholBatchMapper.xml 里的同名查询同构，
+      只是被查询的"下游表"是 reta_batch —— 批发商环节的确认列表用它。
+    -->
+    <resultMap id="DownConfirmMap" type="com.gec.seafood_traceability_system.pojo.ConfirmVO">
+        <id property="id" column="reta_batch_id"/>
+        <result property="downNodeId" column="node_id"/>
+        <result property="downBatchNo" column="batch_no"/>
+        <result property="upBatchNo" column="up_batch_no"/>
+        <result property="breed" column="breed"/>
+        <result property="productType" column="product_type"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="create_time"/>
+
+        <association property="downNode" javaType="com.gec.seafood_traceability_system.pojo.NodeInfo">
+            <id property="nodeId" column="n_node_id"/>
+            <result property="name" column="n_name"/>
+            <result property="code" column="n_code"/>
+            <result property="address" column="n_address"/>
+            <result property="corporation" column="n_corporation"/>
+            <result property="telephone" column="n_telephone"/>
+            <result property="businessId" column="n_business_id"/>
+        </association>
+    </resultMap>
+
+    <select id="selectDownConfirmList" resultMap="DownConfirmMap">
+        SELECT b.reta_batch_id,
+               b.node_id,
+               b.batch_no,
+               b.up_batch_no,
+               b.breed,
+               b.product_type,
+               b.status,
+               b.create_time,
+               n.node_id      AS n_node_id,
+               n.name         AS n_name,
+               n.code         AS n_code,
+               n.address      AS n_address,
+               n.corporation  AS n_corporation,
+               n.telephone    AS n_telephone,
+               n.business_id  AS n_business_id
+        FROM reta_batch b
+                 LEFT JOIN node_info n ON n.node_id = b.node_id
+        WHERE b.status = 2
+          AND b.up_batch_no IN
+        <foreach collection="upBatchNos" item="no" open="(" separator="," close=")">
+            #{no}
+        </foreach>
+        <if test="downName != null and downName != ''">
+            AND n.name LIKE CONCAT('%', #{downName}, '%')
+        </if>
+        ORDER BY b.create_time DESC
     </select>
 
 </mapper>

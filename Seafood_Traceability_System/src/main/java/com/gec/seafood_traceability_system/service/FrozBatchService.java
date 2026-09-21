@@ -17,13 +17,21 @@ public interface FrozBatchService extends OwnedBatchService<FrozBatch> {
 
     boolean offline(Integer frozBatchId);
 
-    /** 下游（批发商）进场确认列表 */
+    /**
+     * 下游（批发商）进场确认列表。
+     * <p>
+     * 实现会委托给 WholBatchService —— 加工企业的下游是批发商，
+     * 要查的是 whol_batch 表，而不是本类的 froz_batch。
+     */
     List<ConfirmVO> listPendingConfirm(Integer frozNodeId, String downName);
 
     /**
-     * 按进场批号查下游待确认批号，并 JOIN 出下游企业（多对一，见 FrozBatchMapper.xml）
+     * 查"以这些批号为进场批号"的下游冷冻加工批号，并 JOIN 出下游企业。
+     * <p>
+     * 查的是 froz_batch 表本身。因为对养殖企业来说，加工批号就是它的下游，
+     * 所以养殖环节的确认列表会委托到本方法（见 FarmBatchServiceImpl）。
      *
-     * @param upBatchNos 本企业已确认的产品批号，调用方保证非空
+     * @param upBatchNos 上游（养殖企业）已发布的批号
      * @param downName   下游企业名称模糊条件，可为 null
      */
     List<ConfirmVO> listDownConfirm(List<String> upBatchNos, String downName);

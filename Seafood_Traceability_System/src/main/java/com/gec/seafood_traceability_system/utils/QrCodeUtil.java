@@ -49,4 +49,37 @@ public final class QrCodeUtil {
         ImageIO.write(image, "PNG", out);
         return out.toByteArray();
     }
+
+    /**
+     * 生成一张占位 PNG：灰色底 + 居中"无二维码"提示。
+     * <p>
+     * 用于编码不存在等无法出码的情况。之所以不返回 JSON 错误，是因为本接口
+     * 被页面的 {@code <img src>} 直接引用——返回 JSON 的话浏览器会把它当图片解析，
+     * 结果就是一个破图图标，用户完全不知道发生了什么。
+     * 返回一张明确的占位图，界面上能直接看出"这里本该有个二维码但没有"。
+     *
+     * @param size 图片边长（像素）
+     */
+    public static byte[] placeholderPng(int size) throws Exception {
+        BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D g = image.createGraphics();
+        try {
+            g.setColor(new java.awt.Color(0xF2F5F9));
+            g.fillRect(0, 0, size, size);
+            g.setColor(new java.awt.Color(0xC0C4CC));
+            // 边框，让占位图在页面上有个明确的边界
+            g.drawRect(1, 1, size - 3, size - 3);
+            g.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, Math.max(12, size / 14)));
+            g.setColor(new java.awt.Color(0x90_93_99));
+            String text = "无二维码";
+            java.awt.FontMetrics fm = g.getFontMetrics();
+            int tw = fm.stringWidth(text);
+            g.drawString(text, (size - tw) / 2, size / 2 + fm.getAscent() / 3);
+        } finally {
+            g.dispose();
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "PNG", out);
+        return out.toByteArray();
+    }
 }

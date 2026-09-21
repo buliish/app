@@ -66,10 +66,16 @@ public class WholBatchServiceImpl extends ServiceImpl<WholBatchMapper, WholBatch
         if (upBatchNos.isEmpty()) {
             return new ArrayList<>();
         }
-        //2.下游批号 + 所属企业一次 JOIN 查出（多对一），名称模糊匹配下推到 SQL
-        return listDownConfirm(upBatchNos, downName);
+        //2.批发商的下游是零售商，委托给 RetaBatchService（它查 reta_batch 表）
+        return retaBatchService.listDownConfirm(upBatchNos, downName);
     }
 
+    /**
+     * 查"以这些批号为进场批号"的下游批发批号，并 JOIN 出下游企业。
+     * <p>
+     * 本方法查的是自己这张 whol_batch 表 —— 对加工企业而言批发批号就是它的下游，
+     * 所以加工环节的 listPendingConfirm 会委托到这里。
+     */
     @Override
     public List<ConfirmVO> listDownConfirm(List<String> upBatchNos, String downName) {
         if (upBatchNos == null || upBatchNos.isEmpty()) {

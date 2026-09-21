@@ -3,22 +3,15 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <!--
-  冷冻加工工序记录 Mapper —— 数据层批量操作
-  单表增删改查仍由 MyBatis-Plus BaseMapper 自动生成。
+  冷冻加工工序记录：数据层批量操作
+  一条加工批号往往要一次录入整套工序（清洗/分级/冷冻/包装），
+  用 foreach 拼成单条多值 INSERT，避免 N 次数据库往返。
 -->
 <mapper namespace="com.gec.seafood_traceability_system.mapper.ProcessRecordMapper">
 
-    <!--
-      批量新增工序记录。
-      一条批号常要一次录入清洗/分级/冷冻/包装整套工序，
-      foreach 拼多值 INSERT 比循环单条省往返。
-
-      useGeneratedKeys + keyProperty 回填自增主键，
-      便于调用方插入后直接拿到 recordId（例如回填 batchNo 冗余列或返回给前端）。
-    -->
-    <insert id="insertBatch" useGeneratedKeys="true" keyProperty="recordId">
+    <insert id="insertBatch">
         INSERT INTO process_record
-            (froz_batch_id, node_id, step, step_time, temperature, operator, remark)
+        (froz_batch_id, node_id, step, step_time, temperature, operator, remark)
         VALUES
         <foreach collection="records" item="r" separator=",">
             (#{r.frozBatchId}, #{r.nodeId}, #{r.step}, #{r.stepTime},

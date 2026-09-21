@@ -35,4 +35,15 @@ public interface TraceService {
      * @return 详情数据，批号不存在时返回 null
      */
     Map<String, Object> productDetailByTraceCode(String traceCode);
+
+    /**
+     * 判断某个编码是否存在对应的零售批号（溯源码或对外产品编号皆可）。
+     * <p>
+     * 专供二维码生成使用，<b>刻意不区分上下架状态</b> —— 二维码的语义是
+     * "把产品编号印在包装上"，批号下架后包装上已印的码不该跟着失效；
+     * 能否查到内容由扫码后的查询接口决定。
+     *
+     * @return true 表示存在
+     */
+    boolean existsCode(String code);
 }

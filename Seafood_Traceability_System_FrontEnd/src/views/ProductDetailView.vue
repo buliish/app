@@ -1,136 +1,119 @@
 <template>
   <!--
-    商品溯源详情（免登录，入口是 /product/:code）。
-    参数既可以是溯源码，也可以是对外产品编号——消费者可能输包装上的产品编号。
-
-    与 /trace 溯源查询页的区别：这里以"商品"为主体，
-    先给商品信息（图、价、质量），再展开四级链路、检测记录与加工工序。
+    商品详情页（消费者端，免登录）
+    以"产品"为主角：产品卡 + 合格总览 + 逐级流转链路 + 各环节企业 + 检测记录。
+    注意：任务书 3.2.7 要求展示养殖/加工/批发/零售四级企业，
+    因此"各环节企业信息"区块完整保留，不能因为改产品视角就去掉。
   -->
-  <div class="detail-page">
-    <header class="detail-header">
-      <img :src="seafoodLogo" alt="冷冻对虾全产业链溯源系统" class="logo" />
-      <div class="title-wrap">
-        <h1>冷冻对虾全产业链溯源系统</h1>
-        <p>商品溯源详情</p>
-      </div>
-      <el-link class="back" @click="router.push('/')">返回首页</el-link>
+  <div class="pd-page">
+    <header class="app-header">
+      <img :src="seafoodLogo" alt="logo" class="app-header-logo" />
+      <h1 class="app-header-title">冷冻对虾全产业链溯源系统</h1>
+      <el-link class="pd-back" @click="router.push('/')">返回商城</el-link>
     </header>
 
-    <main class="detail-body" v-loading="loading">
-      <el-empty v-if="!loading && !data" description="未找到该产品，请核对编码后重试">
-        <el-button type="primary" @click="router.push('/')">返回首页</el-button>
-      </el-empty>
-
+    <main class="pd-body" v-loading="loading">
       <template v-if="data">
-        <!-- 下架提示：链接仍可打开，但明确告知该批次已不在售 -->
         <el-alert
           v-if="data.offline"
-          title="该批次已下架，以下为历史溯源信息"
+          title="该产品已下架，以下为历史溯源信息"
           type="warning"
-          :closable="false"
           show-icon
-          class="offline-alert"
+          :closable="false"
+          class="pd-alert"
         />
 
-        <!-- 商品信息 -->
-        <el-card shadow="never" class="card">
-          <div class="product-head">
-            <div class="thumb">
-              <img v-if="data.imageUrl" :src="data.imageUrl" :alt="data.breed" />
-              <div v-else class="thumb-fallback">{{ data.productType || '对虾' }}</div>
-            </div>
-            <div class="head-info">
-              <div class="name-row">
-                <span class="name">{{ data.breed || '—' }}</span>
-                <QualityTag :status="data.qualityStatus" />
-                <el-tag v-if="!data.complete" type="warning" size="small" effect="dark">
-                  链路不完整
+        <!-- 产品卡 -->
+        <el-card shadow="never" class="pd-card">
+          <div class="pd-hero">
+            <img :src="data.imageUrl || defaultProductImg" alt="产品图片" class="pd-img" />
+            <div class="pd-hero-info">
+              <h2>{{ productName }}</h2>
+              <div class="pd-tags">
+                <el-tag :type="data.productForm === '鲜虾' ? 'success' : 'primary'" effect="plain">
+                  {{ data.productForm || '冻虾' }}
                 </el-tag>
+                <QualityTag :status="data.overallQuality" effect="dark" />
+                <el-tag v-if="data.sourceType" type="info" effect="plain">{{ data.sourceType }}</el-tag>
               </div>
-              <p class="line">产品编号：{{ data.productCode || '—' }}</p>
-              <p class="line">规格：{{ data.specGrade || '—' }}</p>
-              <p class="line">
-                形态：{{ data.productForm || '—' }}
-                <template v-if="data.sourceType"> · 来源：{{ data.sourceType }}</template>
-              </p>
-              <p class="line">产地：{{ farmNode.name || '—' }}</p>
-              <div class="price">
-                <template v-if="data.price !== null && data.price !== undefined">
-                  ¥{{ Number(data.price).toFixed(2) }}
-                </template>
-                <template v-else>价格面议</template>
+              <div class="pd-price">{{ data.price != null ? `¥${data.price}` : '价格待定' }}</div>
+              <div class="pd-codes">
+                <span>产品编号：<b>{{ data.productCode || '—' }}</b></span>
+                <span>溯源标识码：<b>{{ data.traceCode }}</b></span>
               </div>
+            </div>
+            <div class="pd-qr">
+              <img :src="qrUrl" alt="溯源二维码" class="pd-qr-img" />
+              <span>扫码溯源</span>
             </div>
           </div>
-
-          <el-descriptions :column="2" border class="desc">
-            <el-descriptions-item label="溯源标识码">
-              <el-tag v-if="data.traceCode" type="success" effect="dark">{{ data.traceCode }}</el-tag>
-              <span v-else>—</span>
-            </el-descriptions-item>
-            <el-descriptions-item label="零售批号">{{ data.batchNo || '—' }}</el-descriptions-item>
-            <el-descriptions-item label="品类">{{ data.productType || '—' }}</el-descriptions-item>
-            <el-descriptions-item label="整体质量结论">
-              <QualityTag :status="data.overallQuality" />
-            </el-descriptions-item>
-          </el-descriptions>
         </el-card>
 
-        <!-- 四级流转链路 -->
-        <el-card shadow="never" class="card">
-          <template #header><span class="section-title">全产业链流转链路</span></template>
+        <!-- 合格总览：每个环节各自的合格状态 -->
+        <el-card shadow="never" class="pd-card">
+          <template #header><span class="pd-title">各环节质量总览</span></template>
+          <div class="quality-grid">
+            <div v-for="s in qualityStages" :key="s.label" class="quality-cell">
+              <div class="quality-stage">{{ s.label }}</div>
+              <QualityTag :status="s.value" />
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 逐级流转链路 -->
+        <el-card shadow="never" class="pd-card">
+          <template #header><span class="pd-title">全产业链流转链路</span></template>
           <el-timeline>
             <el-timeline-item
               v-for="(item, index) in data.chain"
               :key="index"
-              :timestamp="item.time"
+              :timestamp="fmt(item.time)"
               placement="top"
-              :type="index === 0 ? 'success' : 'primary'"
             >
               <div class="chain-item">
                 <h4>{{ item.stage }} · {{ item.nodeName }}</h4>
-                <p>
-                  产品批号：{{ item.batchNo }}
-                  <span v-if="item.breed"> · 品种：{{ item.breed }}</span>
-                  <span v-if="item.productType"> · {{ item.productType }}</span>
-                </p>
+                <p>批号：{{ item.batchNo }}</p>
+                <p v-if="item.breed">品种：{{ item.breed }}</p>
+                <p v-if="item.productType">品类：{{ item.productType }}</p>
               </div>
             </el-timeline-item>
           </el-timeline>
         </el-card>
 
-        <!-- 各环节企业 -->
-        <el-card shadow="never" class="card">
-          <template #header><span class="section-title">各环节企业信息</span></template>
-          <el-table :data="nodeRows" border stripe size="small">
-            <el-table-column prop="stage" label="环节" width="120" align="center" />
+        <!-- 各环节企业信息（任务书 3.2.7 明确要求展示四级企业） -->
+        <el-card shadow="never" class="pd-card">
+          <template #header><span class="pd-title">各环节企业信息</span></template>
+          <el-table :data="nodeRows" border stripe>
+            <el-table-column prop="stage" label="环节" width="130" />
             <el-table-column prop="name" label="企业名称" min-width="200" />
-            <el-table-column prop="address" label="地址" min-width="180" />
-            <el-table-column prop="corporation" label="联系人" width="100" />
-            <el-table-column prop="telephone" label="联系电话" width="130" />
+            <el-table-column prop="address" label="地址" min-width="200" />
+            <el-table-column prop="corporation" label="联系人" width="110" />
+            <el-table-column prop="telephone" label="联系电话" width="140" />
           </el-table>
         </el-card>
 
         <!-- 检测记录 -->
-        <el-card shadow="never" class="card">
-          <template #header><span class="section-title">各环节检测记录</span></template>
-          <InspectionTable :records="data.inspections || []" :show-inspector="false" />
+        <el-card shadow="never" class="pd-card">
+          <template #header><span class="pd-title">检测记录</span></template>
+          <InspectionTable :records="data.inspections || []" show-stage :show-inspector="false" />
         </el-card>
 
         <!-- 加工工序 -->
-        <el-card v-if="data.processRecords && data.processRecords.length" shadow="never" class="card">
-          <template #header>
-            <span class="section-title">冷冻加工工序记录（清洗 / 分级 / 冷冻 / 包装）</span>
-          </template>
-          <el-table :data="data.processRecords" border stripe size="small">
-            <el-table-column type="index" label="序号" width="60" align="center" />
-            <el-table-column prop="step" label="工序" width="90" align="center" />
-            <el-table-column prop="stepTime" label="工序时间" min-width="160" />
-            <el-table-column prop="temperature" label="工艺参数" min-width="130" />
-            <el-table-column prop="operator" label="操作人" width="100" />
+        <el-card v-if="(data.processRecords || []).length" shadow="never" class="pd-card">
+          <template #header><span class="pd-title">冷冻加工工序</span></template>
+          <el-table :data="data.processRecords" border stripe>
+            <el-table-column prop="step" label="工序" width="120" />
+            <el-table-column label="工序时间" width="180">
+              <template #default="{ row }">{{ fmt(row.stepTime) }}</template>
+            </el-table-column>
+            <el-table-column prop="temperature" label="工艺参数" min-width="160" />
+            <el-table-column prop="operator" label="操作人" width="120" />
+            <el-table-column prop="remark" label="备注" min-width="180" />
           </el-table>
         </el-card>
       </template>
+
+      <el-empty v-else-if="!loading" description="未找到该产品，请核对编码后重试" />
     </main>
   </div>
 </template>
@@ -138,23 +121,41 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import QualityTag from '../components/QualityTag.vue'
-import InspectionTable from '../components/InspectionTable.vue'
 import { productDetailApi } from '../api/trace'
+import InspectionTable from '../components/InspectionTable.vue'
+import QualityTag from '../components/QualityTag.vue'
 import seafoodLogo from '../assets/images/海鲜.png'
+import defaultProductImg from '../assets/images/海鲜产品溯源.jpeg'
 
 const route = useRoute()
 const router = useRouter()
-
 const data = ref(null)
 const loading = ref(false)
 
-const farmNode = computed(() => (data.value && data.value.farm) || {})
-
-// 各环节企业行：与消费者溯源页一致，直接读后端 render() 出来的四个 key
-const nodeRows = computed(() => {
-  if (!data.value) return []
+const productName = computed(() => {
   const d = data.value
+  if (!d) return ''
+  return [d.specGrade, d.productForm, d.productType, d.breed].filter(Boolean).join(' · ') || '对虾产品'
+})
+
+const qrUrl = computed(() => `/trace/qrcode/${encodeURIComponent(route.params.code)}`)
+
+// 各环节质量状态：取自链路上四个批号
+const qualityStages = computed(() => {
+  const d = data.value
+  if (!d) return []
+  return [
+    { label: '养殖', value: d.farmBatch?.qualityStatus },
+    { label: '冷冻加工', value: d.frozBatch?.qualityStatus },
+    { label: '批发', value: d.wholBatch?.qualityStatus },
+    { label: '零售', value: d.retaBatch?.qualityStatus }
+  ]
+})
+
+// 与既有溯源页保持一致：从四个环节 key 里取企业信息
+const nodeRows = computed(() => {
+  const d = data.value
+  if (!d) return []
   const rows = []
   const push = (stage, node) => {
     if (node && node.name) rows.push({ stage, ...node })
@@ -166,15 +167,15 @@ const nodeRows = computed(() => {
   return rows
 })
 
+function fmt(t) {
+  return String(t || '').replace('T', ' ')
+}
+
 onMounted(async () => {
-  const code = route.params.code
-  if (!code) {
-    return
-  }
   loading.value = true
   try {
-    const res = await productDetailApi(code)
-    data.value = res.data
+    const res = await productDetailApi(route.params.code)
+    data.value = res.data || null
   } catch (e) {
     data.value = null
   } finally {
@@ -184,145 +185,147 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.detail-page {
+.pd-page {
   min-height: 100vh;
-  background: var(--bg-page);
+  background: var(--c-bg-page);
 }
 
-.detail-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 0 24px;
-  height: 68px;
-  background: var(--brand-gradient);
-  color: #fff;
-}
-
-.logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: #fff;
-  padding: 2px;
-  object-fit: cover;
-}
-
-.title-wrap h1 {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.title-wrap p {
-  font-size: 12px;
-  opacity: 0.85;
-  margin-top: 2px;
-}
-
-.back {
+.pd-back {
   margin-left: auto;
   color: #fff !important;
-  font-size: 13px;
 }
 
-.detail-body {
-  max-width: 960px;
+.pd-body {
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 18px 24px 40px;
+  padding: 20px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.offline-alert {
-  margin-bottom: 14px;
+.pd-alert {
+  margin-bottom: 4px;
 }
 
-.card {
-  margin-bottom: 16px;
+.pd-card {
+  border-radius: var(--r-lg);
 }
 
-.section-title {
-  font-size: 14px;
+.pd-title {
+  font-size: 15px;
   font-weight: 600;
-  color: var(--brand-primary-dark);
+  color: var(--c-primary);
 }
 
-.product-head {
+/* 产品卡 */
+.pd-hero {
   display: flex;
-  gap: 18px;
-  margin-bottom: 14px;
+  gap: 22px;
+  align-items: flex-start;
 }
 
-.thumb {
-  width: 130px;
-  height: 130px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #eef4fa;
-}
-
-.thumb img {
-  width: 100%;
-  height: 100%;
+.pd-img {
+  width: 230px;
+  height: 170px;
   object-fit: cover;
-  display: block;
+  border-radius: var(--r-md);
+  flex-shrink: 0;
 }
 
-.thumb-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--brand-primary);
-  font-size: 13px;
-  text-align: center;
-  padding: 6px;
-}
-
-.head-info {
+.pd-hero-info {
   flex: 1;
   min-width: 0;
 }
 
-.name-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.name {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.line {
-  font-size: 13px;
-  color: var(--text-sub);
-  line-height: 1.9;
-}
-
-.price {
-  margin-top: 6px;
+.pd-hero-info h2 {
   font-size: 20px;
-  font-weight: 700;
-  color: #f56c6c;
+  color: var(--c-text);
+  line-height: 1.4;
 }
 
-.desc {
-  margin-top: 6px;
+.pd-tags {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pd-price {
+  margin-top: 12px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #e6653a;
+}
+
+.pd-codes {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--c-text-sub);
+}
+
+.pd-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.pd-qr-img {
+  width: 110px;
+  height: 110px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+}
+
+/* 环节质量总览 */
+.quality-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.quality-cell {
+  text-align: center;
+  padding: 14px 8px;
+  border: 1px solid #eef2f7;
+  border-radius: var(--r-md);
+  background: #fafcfe;
+}
+
+.quality-stage {
+  font-size: 13px;
+  color: var(--c-text-sub);
+  margin-bottom: 8px;
 }
 
 .chain-item h4 {
-  font-size: 14px;
-  color: var(--text-main);
+  font-size: 15px;
+  color: var(--c-text);
 }
 
 .chain-item p {
-  font-size: 12px;
-  color: var(--text-sub);
-  margin-top: 2px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--c-text-sub);
+}
+
+@media (max-width: 820px) {
+  .pd-hero {
+    flex-direction: column;
+  }
+
+  .pd-img {
+    width: 100%;
+    height: 200px;
+  }
+
+  .quality-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

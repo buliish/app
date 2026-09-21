@@ -2,6 +2,7 @@ package com.gec.seafood_traceability_system.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.gec.seafood_traceability_system.pojo.ConfirmVO;
 import com.gec.seafood_traceability_system.pojo.RetaBatch;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -40,4 +41,13 @@ public interface RetaBatchMapper extends BaseMapper<RetaBatch> {
 
     /** 在售商品的形态分布（管理端统计图用） */
     List<Map<String, Object>> selectFormDist();
+
+    /**
+     * 下游（零售商）进场确认列表，多对一 JOIN 出下游企业信息。
+     * <p>
+     * 供批发商环节的"下游企业进场确认"使用——批发商查的是零售批号表，
+     * 因此这条查询必须定义在 RetaBatchMapper 上。
+     */
+    List<ConfirmVO> selectDownConfirmList(@Param("upBatchNos") List<String> upBatchNos,
+                                          @Param("downName") String downName);
 }
