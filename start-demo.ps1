@@ -66,8 +66,10 @@ foreach ($c in $candidates) {
 Write-Host ''
 
 $lanIp = $best.IP
-$qrBase = "http://${lanIp}:5173/trace?code="
-$phoneUrl = "http://${lanIp}:5173"
+# 用 https：手机上的「扫一扫」要调摄像头，而 getUserMedia 只在安全上下文
+# （https 或 localhost）里可用，http + 局域网 IP 会被浏览器拒绝。
+$qrBase = "https://${lanIp}:5173/trace?code="
+$phoneUrl = "https://${lanIp}:5173"
 
 # ---------------------------------------------------------------------
 # 2. 拉起后端（带上二维码地址）
@@ -92,14 +94,18 @@ Write-Host '============================================================' -Foreg
 Write-Host ' 已启动（两个新窗口，别关掉）' -ForegroundColor Cyan
 Write-Host '============================================================' -ForegroundColor Cyan
 Write-Host ''
-Write-Host "  电脑上访问：  http://localhost:5173" -ForegroundColor White
+Write-Host "  电脑上访问：  https://localhost:5173" -ForegroundColor White
 Write-Host "  手机上访问：  $phoneUrl" -ForegroundColor Yellow
 Write-Host ''
-Write-Host '  手机扫码演示步骤：' -ForegroundColor White
+Write-Host '  手机扫一扫演示步骤：' -ForegroundColor White
 Write-Host "    1. 手机连到和电脑同一个 WiFi（或电脑开的热点）"
-Write-Host "    2. 打开 $phoneUrl/trace"
-Write-Host "    3. 输入溯源码（如 SHZ202602010002）点查询"
-Write-Host "    4. 页面下方会出现二维码，另用手机扫它 → 直接出溯源结果"
+Write-Host "    2. 手机浏览器打开 $phoneUrl/trace"
+Write-Host '       首次会提示「您的连接不是私密连接」（自签名证书所致），'
+Write-Host '       点【高级】→【继续前往】即可。'
+Write-Host "    3. 电脑打开商品详情页，例如 https://localhost:5173/product/SHZ202601010001"
+Write-Host '       页面上会显示该商品的溯源二维码。'
+Write-Host '    4. 手机上点【扫一扫】，对准电脑屏幕上的二维码，'
+Write-Host '       识别成功后手机上直接弹出该产品的溯源信息。'
 Write-Host ''
 Write-Host '  二维码里写的是：' -ForegroundColor DarkGray
 Write-Host "    $qrBase<溯源码>" -ForegroundColor DarkGray

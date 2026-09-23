@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // 开发服务器把后端接口请求代理到 SpringBoot(8080)
 // 代理前缀与后端各 Controller 的 @RequestMapping 保持一致：
@@ -48,7 +49,22 @@ proxy['^/trace/'] = {
 }
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    /*
+     * 启用 HTTPS（自动生成自签名证书）。
+     *
+     * 为什么需要：消费者端的「扫一扫」要调用手机摄像头，而浏览器的
+     * getUserMedia 只在**安全上下文**里可用 —— 即 https:// 或 localhost。
+     * 手机访问的是 http://<局域网IP>:5173，属于非安全上下文，
+     * navigator.mediaDevices 直接是 undefined，摄像头调不起来。
+     * 配上 HTTPS 后手机就能实时扫码。
+     *
+     * 代价：首次访问时浏览器会弹「您的连接不是私密连接」，
+     * 需要点「高级 → 继续前往」。自签名证书导致的，演示时正常现象。
+     */
+    basicSsl()
+  ],
   server: {
     // host 必须是 true（= 监听 0.0.0.0）而不是 'localhost'：
     // 设成 localhost 时 Vite 只绑定 127.0.0.1，手机等局域网设备连不进来，

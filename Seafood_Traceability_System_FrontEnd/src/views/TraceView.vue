@@ -26,27 +26,28 @@
             @keyup.enter="handleSearch"
           />
           <el-button type="primary" size="large" :loading="loading" @click="handleSearch">查 询</el-button>
+          <!--
+            扫一扫：调起手机摄像头实时识别商品二维码。
+            需要安全上下文（https 或 localhost）才能调用摄像头，
+            vite 已启用 basic-ssl，手机首次访问需手动信任自签名证书。
+          -->
+          <el-button size="large" :icon="Camera" @click="openScan">扫一扫</el-button>
         </div>
-
-        <!--
-          二维码跟着输入框联动：查询成功后显示该溯源码的专属二维码。
-          手机扫它 → 打开 /trace?code=SHZ... → 页面自动带码查询 → 直接出结果。
-          图片由后端 /trace/qrcode/{code} 直接吐 PNG，前端不做生成。
-
-          地址里的主机名来自后端配置 trace.qrcode.base-url（环境变量 TRACE_QR_BASE_URL），
-          演示时用 start-demo 脚本自动填本机局域网 IP —— 否则手机扫到 localhost 会指向手机自己。
-        -->
-        <div v-if="data && data.traceCode" class="qrcode-block">
-          <img
-            class="qrcode-img"
-            :src="`/trace/qrcode/${encodeURIComponent(data.traceCode)}`"
-            :alt="`溯源二维码 ${data.traceCode}`"
-          />
-          <p class="qrcode-code">{{ data.traceCode }}</p>
-          <p class="qrcode-hint">手机扫码直达溯源结果</p>
-        </div>
-        <p v-else class="qrcode-hint qrcode-hint--idle">查询后显示该产品的溯源二维码</p>
+        <p class="scan-tip">扫码需用手机访问（浏览器要求摄像头运行在 https 下）</p>
       </el-card>
+
+      <!-- 扫码取景框：识别成功后自动关闭并展示结果 -->
+      <el-dialog v-model="scanVisible" title="扫一扫" width="min(92vw, 420px)"
+                 align-center :close-on-click-modal="false" @closed="stopScan">
+        <div class="scan-wrap">
+          <video ref="videoRef" class="scan-video" playsinline muted></video>
+          <div class="scan-frame"></div>
+          <p class="scan-status">{{ scanStatus }}</p>
+        </div>
+        <template #footer>
+          <el-button @click="scanVisible = false">取 消</el-button>
+        </template>
+      </el-dialog>
 
       <template v-if="data">
         <!-- 产品基本信息 -->
@@ -128,9 +129,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Camera } from '@element-plus/icons-vue'
+import jsQR from 'jsqr'
 import { traceApi } from '../api/trace'
 import seafoodLogo from '../assets/images/海鲜.png'
 
@@ -139,9 +142,111 @@ const route = useRoute()
 const traceCode = ref('')
 const data = ref(null)
 const loading = ref(false)
+
 const searched = ref(false)
 
-// 支持从二维码扫码进入：/trace?code=SHZ...
+// ---------------- 扫一扫 ----------------
+const scanVisible = ref(false)
+const scanStatus = ref('正在启动摄像头…')
+const videoRef = ref(null)
+let stream = null
+let rafId = 0
+
+/**
+ * 打开扫码对话框并启动摄像头。
+ *
+ * 浏览器要求 getUserMedia 运行在**安全上下文**（https 或 localhost），
+ * 因此手机必须通过 https://<局域网IP>:5173 访问 —— vite 已启用自签名证书，
+ * 首次访问需手动点「高级 → 继续前往」。
+ * 若在 http 下打开，navigator.mediaDevices 会是 undefined，这里给出明确提示。
+ */
+async function openScan() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    ElMessage.error('当前环境不支持调用摄像头，请用 https 访问本页')
+    return
+  }
+  scanVisible.value = true
+  scanStatus.value = '正在启动摄像头…'
+  try {
+    // 优先后置摄像头（手机扫码用后摄更顺手）
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } }
+    })
+    await nextTick()
+    const video = videoRef.value
+    video.srcObject = stream
+    await video.play()
+    scanStatus.value = '将二维码对准取景框'
+    loop()
+  } catch (e) {
+    scanStatus.value = '无法启动摄像头，请检查浏览器权限设置'
+  }
+}
+
+/** 逐帧取景解码。用 requestAnimationFrame 控制节奏，不占用过多 CPU */
+function loop() {
+  const video = videoRef.value
+  if (!video || !stream) return
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const qr = jsQR(img.data, img.width, img.height)
+    if (qr && qr.data) {
+      onScanned(qr.data)
+      return
+    }
+  }
+  rafId = requestAnimationFrame(loop)
+}
+
+/**
+ * 识别成功。
+ * 二维码里可能是一段完整 URL（形如 https://<IP>:5173/trace?code=SHZ...），
+ * 也可能直接就是溯源码本身 —— 两种都要能处理。
+ */
+function onScanned(text) {
+  scanStatus.value = '识别成功！'
+  const code = extractCode(text)
+  scanVisible.value = false
+  stopScan()
+  if (!code) {
+    ElMessage.warning('二维码内容无法识别为溯源标识码')
+    return
+  }
+  traceCode.value = code
+  ElMessage.success('已识别：' + code)
+  handleSearch()
+}
+
+/** 从扫描结果里提取溯源码：是 URL 就取 code 参数，否则当作纯码 */
+function extractCode(text) {
+  const s = String(text || '').trim()
+  const m = s.match(/[?&]code=([^&\s]+)/)
+  if (m) return decodeURIComponent(m[1])
+  if (/^[A-Za-z0-9_-]{6,50}$/.test(s)) return s
+  return ''
+}
+
+/** 释放摄像头。对话框关闭时必须调用，否则摄像头指示灯会一直亮着 */
+function stopScan() {
+  if (rafId) {
+    cancelAnimationFrame(rafId)
+    rafId = 0
+  }
+  if (stream) {
+    stream.getTracks().forEach((t) => t.stop())
+    stream = null
+  }
+  if (videoRef.value) {
+    videoRef.value.srcObject = null
+  }
+}
+
+// 支持从二维码链接进入：/trace?code=SHZ...
 onMounted(() => {
   const code = route.query.code
   if (code) {
@@ -149,6 +254,9 @@ onMounted(() => {
     handleSearch()
   }
 })
+
+// 离开页面时释放摄像头，避免指示灯常亮
+onBeforeUnmount(stopScan)
 
 // 各环节企业信息行
 const nodeRows = computed(() => {
@@ -282,39 +390,45 @@ async function handleSearch() {
   width: 18px;
 }
 
-/* 二维码：查询成功后出现在输入框下方 */
-.qrcode-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  margin-top: 18px;
-}
-
-.qrcode-img {
-  width: 180px;
-  height: 180px;
-  border: 1px solid var(--border-light, #e4e7ed);
-  border-radius: 8px;
-  background: #fff;
-  padding: 6px;
-}
-
-.qrcode-code {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: #1d6fb8;
-}
-
-.qrcode-hint {
+/* 扫一扫 */
+.scan-tip {
+  margin-top: 10px;
   font-size: 12px;
   color: #909399;
+  text-align: center;
 }
 
-.qrcode-hint--idle {
+.scan-wrap {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.scan-video {
+  width: 100%;
   display: block;
+}
+
+/* 取景框：只是视觉引导，解码用的是整帧 */
+.scan-frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  border: 2px solid #1d6fb8;
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.scan-status {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #606266;
   text-align: center;
-  margin-top: 14px;
 }
 </style>
